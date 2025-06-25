@@ -1,0 +1,74 @@
+{
+  "parser_name": "Quadmoon Custom Workflow (Dual Encoder)",
+  "priority": 145, // High priority to catch this specific workflow
+  "target_file_types": ["PNG"],
+
+  "detection_rules": [
+    { "source_type": "pil_info_key", "source_key": "prompt", "operator": "exists" },
+    {
+      "comment": "The unique signature is the presence of the 'quadmoonCLIPTextEncode2' node.",
+      "source_type": "pil_info_key_json_path_query",
+      "source_key": "prompt",
+      "json_query_type": "has_any_node_class_type",
+      "class_types_to_check": ["quadmoonCLIPTextEncode2"], // Look for this exact node
+      "operator": "is_true"
+    }
+  ],
+  
+  "parsing_instructions": {
+    "input_data": { 
+      "source_type": "pil_info_key",
+      "source_key": "prompt",
+      "transformations": [{ "type": "json_decode_string_itself" }]
+    },
+    
+    "fields": [
+      // Find the positive prompt
+      {
+        "target_key": "prompt",
+        "method": "comfy_find_node_input", // We can use a simpler method here
+        "node_criteria": [{ "class_type": "quadmoonCLIPTextEncode2" }],
+        "input_key": "POSITIVE_PROMPT", // Grab the text directly from the node's input
+        "value_type": "string"
+      },
+      // Find the negative prompt
+      {
+        "target_key": "negative_prompt",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "quadmoonCLIPTextEncode2" }],
+        "input_key": "NEGATIVE_PROMPT", // Grab the text from the same node
+        "value_type": "string"
+      },
+      // Find the seed (this probably still comes from the KSampler)
+      {
+        "target_key": "parameters.seed",
+        "method": "comfy_find_input_of_main_sampler",
+        "sampler_node_types": ["KSampler", "KSamplerAdvanced"],
+        "input_key": "seed",
+        "value_type": "integer"
+      },
+      // Find the model by tracing back from the KSampler
+      {
+        "target_key": "parameters.model",
+        "method": "comfy_find_ancestor_node_input_value",
+        "start_node_types": ["KSampler", "KSamplerAdvanced"],
+        "start_node_input_name": "model",
+        "target_ancestor_types": ["CheckpointLoaderSimple"],
+        "target_input_key_in_ancestor": "ckpt_name",
+        "value_type": "string"
+      }
+      // ... and so on for other parameters like steps, cfg, etc.
+    ],
+
+    "output_template": {
+      "tool": "ComfyUI (Quadmoon Workflow)",
+      "prompt": "$prompt",
+      "negative_prompt": "$negative_prompt",
+      "parameters": {
+        "model": "$parameters.model",
+        "seed": "$parameters.seed"
+        // ...
+      }
+    }
+  }
+}

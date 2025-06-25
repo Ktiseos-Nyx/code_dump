@@ -1,0 +1,57 @@
+{
+    "parser_name": "Safetensors Metakeys File",
+    "priority": 170,
+    "target_file_types": ["TXT"],
+    "detection_rules": [
+        {
+            "comment": "Rule 1: First line should be a dict (the metadata string).",
+            "source_type": "file_content_line", // New: get a specific line
+            "line_number": 0,
+            "operator": "is_valid_json_or_python_dict_string" // New: checks if string evals to dict
+        },
+        {
+            "comment": "Rule 2: Subsequent lines should roughly match 'layer_name, [shape]'.",
+            "source_type": "file_content_line",
+            "line_number": 1, // Check the second line
+            "operator": "regex_match",
+            "regex_pattern": "^.+?,\\s*\\[[\\d,\\s]+\\]$"
+        }
+    ],
+    "parsing_instructions": {
+        "input_data": {
+            "source_type": "file_content_raw_text"
+        },
+        "fields": [
+            {
+                "target_key": "parameters.tool_specific.embedded_metadata_str",
+                "method": "extract_line_from_string", // New method
+                "line_number": 0
+            },
+            { // Parse the metadata string
+                "target_key": "parameters.tool_specific.embedded_metadata_parsed",
+                "method": "json_or_python_dict_from_string_variable", // New
+                "source_variable_key": "parameters.tool_specific.embedded_metadata_str",
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.layers",
+                "method": "parse_csv_like_lines_to_array_of_objects", // New method
+                "start_line_index": 1, // Skip the metadata line
+                "column_names": ["layer_name", "shape_str"],
+                "delimiter": ","
+            }
+        ],
+        "output_template": {
+            "tool": "Safetensors Model Structure (from metakeys.txt)",
+            "prompt": null,
+            "parameters": {
+                // ... any relevant data from embedded_metadata_parsed ...
+                "model_format_from_meta": "$parameters.tool_specific.embedded_metadata_parsed.format",
+                "tool_specific": {
+                    "layers": "$parameters.tool_specific.layers",
+                    "original_embedded_metadata": "$parameters.tool_specific.embedded_metadata_str"
+                }
+            }
+        }
+    }
+}

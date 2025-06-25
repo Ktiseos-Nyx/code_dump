@@ -1,0 +1,119 @@
+// Inside midjourney_style_text_chunks.json
+// ... (parser_name, priority, target_file_types, detection_rules remain the same) ...
+"parsing_instructions": {
+    "fields": [
+        {
+            "target_key": "prompt",
+            "method": "regex_capture_before_first_kv_match",
+            "source_data_from_context": { "type": "png_chunk", "key": "Description" },
+            "kv_block_delimiter_pattern": "\\s--[a-zA-Z]",
+            "fallback_full_string": true
+        },
+        // --- Parameters from Description string ---
+        {
+            "target_key": "parameters.tool_specific.aspect_ratio_str",
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "--ar\\s+([^\\s]+)",
+            "group_index": 1, "value_type": "string", "optional": true
+        },
+        // Width/Height derivation (conceptual, using existing image dimensions if needed)
+        {
+            "target_key": "parameters.width",
+            "method": "derived_from_aspect_ratio", /* ... or just use context_data.width ... */
+            "optional": true
+        },
+        {
+            "target_key": "parameters.height",
+            "method": "derived_from_aspect_ratio", /* ... or just use context_data.height ... */
+            "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.version_str", // For --v
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "--v\\s+([^\\s]+)",
+            "group_index": 1, "value_type": "string", "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.niji_version_str", // For --niji
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "--niji\\s+([^\\s]+)",
+            "group_index": 1, "value_type": "string", "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.stylize",
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "--stylize\\s+(\\d+)",
+            "group_index": 1, "value_type": "integer", "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.chaos",
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "--chaos\\s+(\\d+)", // Assuming chaos is an integer
+            "group_index": 1, "value_type": "integer", "optional": true
+        },
+        {
+            "target_key": "parameters.seed", // Midjourney seeds are often not in this string directly
+            "method": "static_value", "value": null, "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.job_id",
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+            "regex_pattern": "Job ID:\\s*([\\w-]+)",
+            "group_index": 1, "value_type": "string", "optional": true
+        },
+        // --- Direct fields from other chunks ---
+        {
+            "target_key": "parameters.tool_specific.author",
+            "method": "direct_context_value",
+            "source_data_from_context": {"type": "png_chunk", "key": "Author"},
+            "value_type": "string", "optional": true
+        },
+        {
+            "target_key": "parameters.tool_specific.creation_time",
+            "method": "direct_context_value",
+            "source_data_from_context": {"type": "png_chunk", "key": "Creation Time"},
+            "value_type": "string", "optional": true
+        },
+        // --- XMP Data ---
+        {
+            "target_key": "parameters.tool_specific.xmp_digImageGUID",
+            "method": "regex_extract_group",
+            "source_data_from_context": {"type": "xmp_string"},
+            "regex_pattern": "iptcExt:DigImageGUID=\\\"([\\w-]+)\\\"",
+            "group_index": 1, "value_type": "string", "optional": true
+        }
+    ],
+    "output_template": {
+        "tool": "Midjourney-Style (Text Chunks)", // Or just "Midjourney" if we're confident
+        "prompt": "$prompt",
+        "negative_prompt": "", // MJ usually doesn't have explicit negative here in this format
+        "parameters": {
+            "steps": null, // Not typically in this format
+            "sampler": null,
+            "cfg_scale": null,
+            "seed": "$parameters.seed",
+            "width": "$CONTEXT.width",    // Defaulting to actual image width from context
+            "height": "$CONTEXT.height",  // Defaulting to actual image height from context
+            "model": null, // Could be inferred from --v or --niji if we add logic
+            "tool_specific": {
+                "author": "$parameters.tool_specific.author",
+                "creation_time": "$parameters.tool_specific.creation_time",
+                "aspect_ratio_str": "$parameters.tool_specific.aspect_ratio_str",
+                "version_str": "$parameters.tool_specific.version_str",
+                "niji_version_str": "$parameters.tool_specific.niji_version_str",
+                "stylize": "$parameters.tool_specific.stylize",
+                "chaos": "$parameters.tool_specific.chaos",
+                "job_id": "$parameters.tool_specific.job_id",
+                "xmp_guid": "$parameters.tool_specific.xmp_digImageGUID"
+                // Could add extracted image URLs here if desired
+            }
+        },
+        "workflow": null // Not a workflow format
+    }
+}

@@ -1,0 +1,90 @@
+{
+  "parser_name": "ComfyUI (Enhanced Generic)",
+  "priority": 150,  // Higher than Civitai parser
+  "target_file_types": ["PNG"],
+  "detection_rules": [
+    {
+      "condition": "OR",
+      "rules": [
+        {
+          "source_type": "pil_info_key",
+          "source_key": "workflow",
+          "operator": "exists"
+        },
+        {
+          "source_type": "pil_info_key",
+          "source_key": "prompt",
+          "operator": "exists"
+        },
+        {
+          "source_type": "png_text_chunk",
+          "chunk_key": "parameters",
+          "operator": "exists"
+        }
+      ]
+    }
+  ],
+  "parsing_instructions": {
+    "input_data": {
+      "source_options": [
+        {
+          "source_type": "pil_info_key",
+          "source_key": "workflow",
+          "priority": 1
+        },
+        {
+          "source_type": "pil_info_key",
+          "source_key": "prompt",
+          "priority": 2
+        },
+        {
+          "source_type": "png_text_chunk",
+          "chunk_key": "parameters",
+          "priority": 3
+        }
+      ],
+      "transformations": [
+        {
+          "type": "json_decode_string_itself"
+        }
+      ]
+    },
+    "fields": [
+      // Existing fields from comfyui_generic.json
+      // Add these new fields:
+      {
+        "target_key": "parameters.clip_skip",
+        "method": "regex_extraction",
+        "source": "parameters",
+        "pattern": "Clip skip: (\\d+)",
+        "value_type": "integer"
+      },
+      {
+        "target_key": "parameters.civitai_resources",
+        "method": "regex_extraction",
+        "source": "parameters",
+        "pattern": "Civitai resources: (\\[{.*?}\\])",
+        "transformations": [
+          {
+            "type": "json_parse"
+          }
+        ]
+      },
+      {
+        "target_key": "parameters.civitai_created_date",
+        "method": "regex_extraction",
+        "source": "parameters",
+        "pattern": "Created Date: ([0-9TZ.:-]+)",
+        "value_type": "string"
+      }
+    ],
+    "output_template": {
+      // Your existing template
+      // Add Civitai fields:
+      "civitai_metadata": {
+        "resources": "$parameters.civitai_resources",
+        "created_date": "$parameters.civitai_created_date"
+      }
+    }
+  }
+}

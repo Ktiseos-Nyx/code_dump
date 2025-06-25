@@ -1,0 +1,170 @@
+{
+    "parser_name": "Fooocus (JSON-Driven Engine Parser)",
+    "priority": 100, // High priority if specific
+    "target_file_types": ["PNG"],
+    "detection_rules": [
+        // These rules identify that the image likely contains Fooocus metadata
+        // Your existing rules for this are fine. For example:
+        {
+            "source_type": "pil_info_key",
+            "source_key": "parameters", // The name of the PNG tEXt chunk
+            "operator": "is_valid_json"
+        },
+        {
+            "source_type": "pil_info_key",
+            "source_key": "parameters",
+            "operator": "json_contains_keys",
+            "expected_keys": ["parameters"] // Verifies the *inner* "parameters" key exists
+        }
+    ],
+    "parsing_instructions": {
+        // Step 1: Define where to get the initial data string for parsing
+        "input_data": {
+            "source_type": "pil_info_key", // Get from PIL's info dictionary
+            "source_key": "parameters",    // The key in PIL info (e.g., "parameters" tEXt chunk)
+            "transformations": [           // Operations to apply to get the *actual* string to parse
+                {
+                    "type": "json_decode_string_value", // 1. Parse the string from pil_info["parameters"] as JSON
+                    "path": "parameters"                // 2. Extract the string value of the "parameters" key from that JSON
+                }
+            ]
+        },
+        // Step 2: Define how to parse the string obtained from "input_data"
+        "fields": [
+            // Prompt extraction
+            {
+                "target_key": "prompt", // Where to store in the final output
+                "method": "regex_capture_before_first_kv_match",
+                "kv_block_delimiter_pattern": "(?:Steps|Sampler|CFG scale|Seed|Size|Model hash|Model|Version|Schedule type|Distilled CFG Scale):"
+                // This pattern tries to find the start of the key-value section.
+                // Everything before it is the prompt.
+            },
+            // Negative Prompt (Fooocus doesn't usually have it here, so static or absent)
+            {
+                "target_key": "negative_prompt",
+                "method": "static_value",
+                "value": "" // Or make it absent if null is preferred
+            },
+            // Key-Value Parameter Extraction
+            // These will operate on the part of the string *after* the prompt
+            {
+                "target_key": "parameters.steps",
+                "method": "key_value_extract",
+                "key_name": "Steps",
+                "value_type": "integer",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.sampler",
+                "method": "key_value_extract",
+                "key_name": "Sampler",
+                "value_type": "string",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.cfg_scale",
+                "method": "key_value_extract",
+                "key_name": "CFG scale",
+                "value_type": "float",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.seed",
+                "method": "key_value_extract",
+                "key_name": "Seed",
+                "value_type": "integer",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            // Width and Height from "Size"
+            {
+                "target_key": "parameters.width",
+                "method": "key_value_extract_transform",
+                "key_name": "Size",
+                "value_type": "integer",
+                "transform_regex": "^(\\d+)x\\d+$", // Captures the first number
+                "transform_group": 1,
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.height",
+                "method": "key_value_extract_transform",
+                "key_name": "Size",
+                "value_type": "integer",
+                "transform_regex": "^\\d+x(\\d+)$", // Captures the second number
+                "transform_group": 1,
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.model_hash",
+                "method": "key_value_extract",
+                "key_name": "Model hash",
+                "value_type": "string",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.model",
+                "method": "key_value_extract",
+                "key_name": "Model",
+                "value_type": "string",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            // Tool-specific parameters
+            {
+                "target_key": "parameters.tool_specific.schedule_type",
+                "method": "key_value_extract",
+                "key_name": "Schedule type",
+                "value_type": "string",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.tool_specific.distilled_cfg_scale",
+                "method": "key_value_extract",
+                "key_name": "Distilled CFG Scale",
+                "value_type": "float",
+                "kv_separator": ":",
+                "pair_separator": ","
+            },
+            {
+                "target_key": "parameters.tool_specific.version",
+                "method": "key_value_extract",
+                "key_name": "Version",
+                "value_type": "string",
+                "kv_separator": ":",
+                "pair_separator": ","
+            }
+        ],
+        // Step 3: Define the final output structure (optional, can be inferred from target_keys)
+        // and add fixed values or values from context_data
+        "output_template": {
+            "tool": "Fooocus", // Can be set from parser_name or explicitly
+            "source_raw_input_string": "$INPUT_STRING", // Special variable for the string from step 1
+            "prompt": "$prompt", // Corresponds to target_key "prompt"
+            "negative_prompt": "$negative_prompt",
+            "parameters": {
+                "steps": "$parameters.steps",
+                "sampler": "$parameters.sampler",
+                "cfg_scale": "$parameters.cfg_scale",
+                "seed": "$parameters.seed",
+                "width": "$parameters.width", // Will take value from extraction
+                "height": "$parameters.height",// Will take value from extraction
+                "model_hash": "$parameters.model_hash",
+                "model": "$parameters.model",
+                "tool_specific": {
+                    "schedule_type": "$parameters.tool_specific.schedule_type",
+                    "distilled_cfg_scale": "$parameters.tool_specific.distilled_cfg_scale",
+                    "version": "$parameters.tool_specific.version"
+                }
+            },
+            "workflow": null // Fooocus doesn't have a Comfy-style workflow here
+        }
+    }
+}

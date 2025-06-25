@@ -1,0 +1,140 @@
+{
+    "parser_name": "Civitai ComfyUI (via extraMetadata)",
+    "priority": 150, // Higher priority because "extraMetadata" is a strong signal
+    "target_file_types": ["PNG"], // Typically PNG
+    "detection_rules": [
+        {
+            "comment": "Rule 1: PNG chunk 'workflow' or 'prompt' usually contains the main JSON.",
+            "source_type": "pil_info_key",
+            "source_key": "workflow", // Or "prompt" if Civitai uses that key for the chunk
+            "operator": "is_valid_json"
+        },
+        {
+            "comment": "Rule 2: The main JSON should have an 'extra' key.",
+            "source_type": "pil_info_key_json_path", // New operator to check JSON path in a chunk
+            "source_key": "workflow", // The chunk name
+            "json_path": "extra",    // Path within the JSON content of the chunk
+            "operator": "exists"
+        },
+        {
+            "comment": "Rule 3: The 'extra' object should have an 'extraMetadata' key which is a string.",
+            "source_type": "pil_info_key_json_path",
+            "source_key": "workflow",
+            "json_path": "extra.extraMetadata",
+            "operator": "is_string" // Check if it's a string
+        },
+        {
+            "comment": "Rule 4: The 'extra.extraMetadata' string should be valid JSON itself.",
+            "source_type": "pil_info_key_json_path_string_is_json", // New operator
+            "source_key": "workflow",
+            "json_path": "extra.extraMetadata",
+            "operator": "is_valid_json" // Check if the *string content* of extraMetadata is JSON
+        }
+    ],
+    "parsing_instructions": {
+        "input_data": {
+            "source_type": "pil_info_key",
+            "source_key": "workflow", // The PNG chunk containing the main ComfyUI JSON
+            "transformations": [
+                {
+                    "type": "json_decode_string_value", // 1. Parse chunk as JSON
+                    "path": "extra.extraMetadata"       // 2. Get the string from "extra.extraMetadata"
+                },
+                {
+                    "type": "json_decode_string_itself" // 3. Parse *that string* as JSON again
+                                                       // Now we have the inner JSON object
+                }
+            ]
+        },
+        "fields": [
+            // Fields are mapped directly from the inner extraMetadata JSON
+            {
+                "target_key": "prompt",
+                "method": "direct_json_path", // Get value from a path in the (transformed) input_data
+                "json_path": "prompt",
+                "value_type": "string"
+            },
+            {
+                "target_key": "negative_prompt",
+                "method": "direct_json_path",
+                "json_path": "negativePrompt", // Note the camelCase in extraMetadata
+                "value_type": "string"
+            },
+            {
+                "target_key": "parameters.steps",
+                "method": "direct_json_path",
+                "json_path": "steps",
+                "value_type": "integer"
+            },
+            {
+                "target_key": "parameters.cfg_scale",
+                "method": "direct_json_path",
+                "json_path": "cfgScale",
+                "value_type": "float"
+            },
+            {
+                "target_key": "parameters.sampler",
+                "method": "direct_json_path",
+                "json_path": "sampler",
+                "value_type": "string"
+            },
+            {
+                "target_key": "parameters.seed",
+                "method": "direct_json_path",
+                "json_path": "seed",
+                "value_type": "integer"
+            },
+            // Width and Height might not be in extraMetadata, use context_data or find in workflow
+            // For now, let's assume they might be, or we'll add a fallback later
+            {
+                "target_key": "parameters.width",
+                "method": "direct_json_path",
+                "json_path": "width", // If it exists
+                "value_type": "integer",
+                "optional": true // Make it optional
+            },
+            {
+                "target_key": "parameters.height",
+                "method": "direct_json_path",
+                "json_path": "height", // If it exists
+                "value_type": "integer",
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.workflowId",
+                "method": "direct_json_path",
+                "json_path": "workflowId",
+                "value_type": "string",
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.resources",
+                "method": "direct_json_path",
+                "json_path": "resources", // This will be an array of objects
+                "value_type": "array",
+                "optional": true
+            }
+            // Model info is usually in 'resources' or needs workflow traversal
+        ],
+        "output_template": {
+            "tool": "Civitai ComfyUI (via extraMetadata)",
+            "prompt": "$prompt",
+            "negative_prompt": "$negative_prompt",
+            "parameters": {
+                "steps": "$parameters.steps",
+                "sampler": "$parameters.sampler", // 'sampler_name' in ComfyUI, 'sampler' here
+                "cfg_scale": "$parameters.cfg_scale",
+                "seed": "$parameters.seed",
+                "width": "$parameters.width",    // Will be overridden by context if null
+                "height": "$parameters.height",  // Will be overridden by context if null
+                "model": null, // Needs to be extracted from 'resources' or workflow
+                "tool_specific": {
+                    "civitai_workflow_id": "$parameters.tool_specific.workflowId",
+                    "civitai_resources": "$parameters.tool_specific.resources"
+                }
+            },
+            "workflow": "$INPUT_STRING_ORIGINAL_CHUNK" // Store the original full workflow JSON
+                                                      // Need a way to reference the data *before* transformations.
+        }
+    }
+}

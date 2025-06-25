@@ -1,0 +1,8 @@
+// In your ComfyUI parser definition's "fields"
+{
+    "target_key": "parameters.tool_specific.custom_node_versions",
+    "method": "direct_json_path", // Assuming input_data is the root workflow object
+    "json_path": "extra.node_versions", // Path to the node_versions object
+    "value_type": "object", // It's a dictionary
+    "optional": true
+}

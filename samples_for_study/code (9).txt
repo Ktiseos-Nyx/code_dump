@@ -1,0 +1,7 @@
+{
+    "target_key": "parameters.tool_specific.image_prompts",
+    "method": "regex_extract_all_groups", // New method: find all matches of a group
+    "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+    "regex_pattern": "(https://s\\.mj\\.run/[\\w-]+)", // Captures each URL
+    "value_type": "array_of_strings", "optional": true
+}

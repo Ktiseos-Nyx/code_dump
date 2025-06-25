@@ -1,0 +1,232 @@
+{
+    "parser_name": "Yodayo (A1111-Style PNG Info)",
+    "priority": 115, // Slightly higher than base A1111 if we can detect Yodayo specifics
+    "target_file_types": ["PNG"], // Yodayo usually saves as PNG
+    "detection_rules": [
+        // Basic A1111-like structure
+        {
+            "source_type": "pil_info_key", // Yodayo uses 'parameters' chunk in PNG
+            "source_key": "parameters",
+            "operator": "exists"
+        },
+        {
+            "source_type": "pil_info_key",
+            "source_key": "parameters",
+            "operator": "regex_match_all",
+            "regex_patterns": [
+                "Negative prompt:", // Presence of this line
+                "Steps:",
+                "CFG scale:",
+                "Seed:"
+            ]
+        },
+        // Yodayo specific markers
+        {
+            "source_type": "pil_info_key",
+            "source_key": "parameters",
+            "operator": "regex_match_any", // Any of these strongly indicates Yodayo
+            "regex_patterns": [
+                "VAE hash:",
+                "ADetailer model:",
+                "Lora hashes:",
+                "NGMS:"
+            ]
+        }
+    ],
+    "parsing_instructions": {
+        "input_data": {
+            // Yodayo stores the full string directly in the 'parameters' tEXt chunk
+            // (or sometimes in UserComment if it were JPEG, but it's typically PNG)
+            "source_options": [
+                { "source_type": "pil_info_key", "source_key": "parameters"}
+            ],
+            "transformations": [] // No outer JSON wrapping the A1111 string itself usually
+        },
+        "fields": [
+            // Positive and Negative Prompt Extraction (same as A1111 methods)
+            {
+                "target_key": "prompt",
+                "method": "a1111_extract_prompt_positive"
+            },
+            {
+                "target_key": "negative_prompt",
+                "method": "a1111_extract_prompt_negative"
+            },
+            // Key-Value Parameter Extraction from the block after prompts
+            // Uses the same base method as A1111, but we'll list all relevant keys.
+            {
+                "target_key": "parameters.steps",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Steps", "value_type": "integer"
+            },
+            {
+                "target_key": "parameters.sampler",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Sampler", "value_type": "string"
+            },
+            {
+                "target_key": "parameters.schedule_type",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Schedule type", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.cfg_scale",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "CFG scale", "value_type": "float"
+            },
+            {
+                "target_key": "parameters.seed",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Seed", "value_type": "integer"
+            },
+            {
+                "target_key": "parameters.width",
+                "method": "key_value_extract_transform_from_a1111_block",
+                "key_name": "Size", "value_type": "integer",
+                "transform_regex": "^(\\d+)x\\d+$", "transform_group": 1
+            },
+            {
+                "target_key": "parameters.height",
+                "method": "key_value_extract_transform_from_a1111_block",
+                "key_name": "Size", "value_type": "integer",
+                "transform_regex": "^\\d+x(\\d+)$", "transform_group": 1
+            },
+            {
+                "target_key": "parameters.model_hash",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Model hash", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.model", // This is often a GUID for Yodayo models
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Model", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.vae_hash",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "VAE hash", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.vae_model", // Standardized: parameters.vae
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "VAE", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.denoising_strength",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Denoising strength", "value_type": "float", "optional": true
+            },
+            {
+                "target_key": "parameters.clip_skip",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Clip skip", "value_type": "integer", "optional": true
+            },
+            // ADetailer fields (all tool_specific)
+            {
+                "target_key": "parameters.tool_specific.adetailer_model",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer model", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_confidence",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer confidence", "value_type": "float", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_dilate_erode",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer dilate erode", "value_type": "integer", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_mask_blur",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer mask blur", "value_type": "integer", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_denoising_strength",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer denoising strength", "value_type": "float", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_inpaint_only_masked",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer inpaint only masked", "value_type": "boolean", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_inpaint_padding",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer inpaint padding", "value_type": "integer", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.adetailer_version",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "ADetailer version", "value_type": "string", "optional": true
+            },
+            // Lora Hashes: "id1: hash1, id2: hash2"
+            // This needs special parsing for the value string.
+            {
+                "target_key": "parameters.tool_specific.lora_hashes_str",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Lora hashes", "value_type": "string", "optional": true
+            },
+            { // Parse the lora_hashes_str into a structured list/dict
+                "target_key": "parameters.tool_specific.loras_parsed", // Or directly to parameters.loras
+                "method": "parse_lora_hashes_string", // New method needed
+                "source_variable_key": "parameters.tool_specific.lora_hashes_str",
+                "value_type": "array_of_objects", // e.g., [{"id": "...", "hash": "..."}, ...]
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.emphasis",
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Emphasis", "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.yodayo_ngms", // Standardized to parameters.ngms ?
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "NGMS", "value_type": "float", "optional": true
+            },
+            {
+                "target_key": "parameters.version", // Yodayo version
+                "method": "key_value_extract_from_a1111_block",
+                "key_name": "Version", "value_type": "string", "optional": true
+            }
+        ],
+        "output_template": {
+            "tool": "Yodayo", // Or "Yodayo/Moescape"
+            "prompt": "$prompt",
+            "negative_prompt": "$negative_prompt",
+            "parameters": {
+                "steps": "$parameters.steps",
+                "sampler": "$parameters.sampler",
+                "cfg_scale": "$parameters.cfg_scale",
+                "seed": "$parameters.seed",
+                "width": "$parameters.width",
+                "height": "$parameters.height",
+                "model_hash": "$parameters.model_hash",
+                "model": "$parameters.model", // Yodayo model ID/name
+                "vae": "$parameters.tool_specific.vae_model", // Standardized VAE
+                "denoising_strength": "$parameters.denoising_strength",
+                "clip_skip": "$parameters.clip_skip",
+                "tool_specific": {
+                    "schedule_type": "$parameters.schedule_type",
+                    "vae_hash": "$parameters.tool_specific.vae_hash",
+                    "adetailer_model": "$parameters.tool_specific.adetailer_model",
+                    "adetailer_confidence": "$parameters.tool_specific.adetailer_confidence",
+                    "adetailer_dilate_erode": "$parameters.tool_specific.adetailer_dilate_erode",
+                    "adetailer_mask_blur": "$parameters.tool_specific.adetailer_mask_blur",
+                    "adetailer_denoising_strength": "$parameters.tool_specific.adetailer_denoising_strength",
+                    "adetailer_inpaint_only_masked": "$parameters.tool_specific.adetailer_inpaint_only_masked",
+                    "adetailer_inpaint_padding": "$parameters.tool_specific.adetailer_inpaint_padding",
+                    "adetailer_version": "$parameters.tool_specific.adetailer_version",
+                    "loras": "$parameters.tool_specific.loras_parsed", // Parsed lora info
+                    "lora_hashes_raw_string": "$parameters.tool_specific.lora_hashes_str", // Keep raw string too
+                    "emphasis": "$parameters.tool_specific.emphasis",
+                    "yodayo_ngms": "$parameters.tool_specific.yodayo_ngms",
+                    "yodayo_version": "$parameters.version" // Renamed from generic 'version'
+                }
+            },
+            "workflow": null // Not a workflow format
+        }
+    }
+}

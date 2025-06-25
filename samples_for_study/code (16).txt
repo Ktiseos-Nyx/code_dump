@@ -1,0 +1,86 @@
+{
+    "parser_name": "Generic Image with XMP (No AI Params)",
+    "priority": 15, // Low, but slightly higher than one with absolutely no XMP
+    "target_file_types": ["PNG", "JPEG", "WEBP", "PSD", "TIFF"],
+    "detection_rules": [
+        {
+            "comment": "Rule 1: XMP string must exist.",
+            "source_type": "xmp_string_content", // context_data.xmp_string
+            "operator": "exists"
+        },
+        // Rule 2: Ensure no primary AI metadata chunks/keys exist
+        // to prevent it from overriding a potentially failed AI parser.
+        {
+            "condition": "AND",
+            "rules": [
+                { "source_type": "pil_info_key", "source_key": "parameters", "operator": "not_exists"},
+                { "source_type": "pil_info_key", "source_key": "workflow", "operator": "not_exists"},
+                { "source_type": "exif_user_comment", "operator": "not_contains_ai_keywords", // Needs new operator
+                  "keywords_to_check": ["Steps:", "Seed:", "Prompt:"] } // conceptual
+            ]
+        }
+    ],
+    "parsing_instructions": {
+        // No single input_data string for AI params.
+        // We will define methods to extract specific XMP fields.
+        "xmp_parsing_options": { // Hint to the engine to parse the XMP string
+            "parse_xmp_string_to_dict_variable": "parsed_xmp" // Store parsed XMP in an internal var
+        },
+        "fields": [
+            // Standard null/unknown fields for AI params
+            {"target_key": "prompt", "method": "static_value", "value": null},
+            // ... (other AI params as null) ...
+            {
+                "target_key": "parameters.tool_specific.creator_tool",
+                "method": "xmp_extract_value", // New method
+                "xmp_path": "xmp:CreatorTool", // XPath-like or simple path to XMP tag
+                "source_xmp_dict_variable": "parsed_xmp", // Use the parsed XMP
+                "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.document_title",
+                "method": "xmp_extract_value",
+                "xmp_path": "dc:title/rdf:Alt/rdf:li[@xml:lang='x-default']", // More complex XMP path
+                                                                          // Or simpler: "dc:title" if it's not an Alt list
+                "source_xmp_dict_variable": "parsed_xmp",
+                "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.icc_profile_present",
+                "method": "direct_context_boolean_check",
+                "context_key_path": "pil_info.icc_profile", // Check if context_data.pil_info['icc_profile'] exists
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.dpi_x",
+                "method": "direct_context_pil_info_path_transform",
+                "pil_info_path": "dpi.0", "value_type": "float", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.dpi_y",
+                "method": "direct_context_pil_info_path_transform",
+                "pil_info_path": "dpi.1", "value_type": "float", "optional": true
+            }
+        ],
+        "output_template": {
+            "tool": "Image (Edited)", // Or derive from xmp:CreatorTool if possible
+            "prompt": "$prompt",
+            "negative_prompt": null,
+            "parameters": {
+                "steps": null, "sampler": null, "cfg_scale": null, "seed": null,
+                "width": "$CONTEXT.width",
+                "height": "$CONTEXT.height",
+                "model": null,
+                "tool_specific": {
+                    "creator_tool": "$parameters.tool_specific.creator_tool",
+                    "document_title": "$parameters.tool_specific.document_title",
+                    "icc_profile_present": "$parameters.tool_specific.icc_profile_present",
+                    "dpi_x": "$parameters.tool_specific.dpi_x",
+                    "dpi_y": "$parameters.tool_specific.dpi_y",
+                    "full_xmp_string": "$CONTEXT.xmp_string" // Store the raw XMP
+                }
+            },
+            "workflow": null
+        }
+    }
+}

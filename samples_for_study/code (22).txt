@@ -1,0 +1,49 @@
+{
+  "parser_name": "Zho's Qwen2 Prompt-Gen Workflow (SD3)",
+  "priority": 160, // Highest priority for ComfyUI
+
+  "detection_rules": [
+    // The unique signature is the presence of both Qwen2_Zho and a KSampler
+    { "json_query_type": "has_any_node_class_type", "class_types_to_check": ["Qwen2_Zho"] },
+    { "json_query_type": "has_any_node_class_type", "class_types_to_check": ["KSampler"] }
+  ],
+
+  "parsing_instructions": {
+    "input_data": { /* ... */ },
+    
+    "fields": [
+      // The "Final Prompt" is the one that was ACTUALLY used for the image
+      {
+        "target_key": "prompt",
+        "method": "comfy_find_text_from_main_sampler_input", // Your existing method
+        "text_encoder_node_types": ["CLIPTextEncode"] // This still works
+      },
+      
+      // The "User's Original Idea" - this requires a new, advanced method
+      {
+        "target_key": "parameters.tool_specific.user_idea_prompt",
+        "method": "comfy_find_ancestor_of_ancestor", // A hypothetical new tool
+        "start_node_types": ["KSampler"], // Start at the sampler
+        "path_to_follow": ["positive", "text", "text"], // Follow the wires: KSampler -> CLIPEncode -> DisplayText -> Qwen2
+        "target_ancestor_types": ["Qwen2_Zho"],
+        "target_input_key_in_ancestor": "text_to_generate_from" // Whatever the input is called
+      },
+
+      // The "LLM Instructions"
+      {
+        "target_key": "parameters.tool_specific.llm_system_prompt",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "Qwen2_Zho" }],
+        "input_key": "system_prompt" // The name of the instructions widget
+      },
+
+      // And all the standard stuff is still easy to get
+      {
+        "target_key": "parameters.seed",
+        "method": "comfy_find_input_of_main_sampler",
+        "input_key": "seed" // Note: SD3 stores seed/steps in widgets_values, not inputs
+      }
+    ]
+  },
+  "output_template": { /* ... */ }
+}

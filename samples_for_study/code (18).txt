@@ -1,0 +1,59 @@
+{
+    "parser_name": "Safetensors Model File",
+    "priority": 175,
+    "target_file_types": ["SAFETENSORS"], // Engine needs to map .safetensors ext to this
+    "detection_rules": [
+        {
+            "comment": "Rule 1: Safetensors metadata must exist in context.",
+            "source_type": "direct_context_key", // Check context_data itself
+            "context_key_path": "safetensors_metadata",
+            "operator": "exists"
+        },
+        {
+            "comment": "Rule 2: Metadata often has a 'format' key.",
+            "source_type": "direct_context_key_path_value",
+            "context_key_path": "safetensors_metadata.format",
+            "operator": "exists",
+            "optional": true
+        }
+    ],
+    "parsing_instructions": {
+        "input_data": { // The input here is context_data itself, or specifically context_data.safetensors_metadata
+            "source_type": "direct_context_key_object",
+            "context_key_path": "safetensors_metadata"
+        },
+        "fields": [
+            // Example: map all keys from safetensors_metadata to tool_specific
+            {
+                "target_key": "parameters.tool_specific.metadata",
+                "method": "direct_input_object_as_value" // Takes the whole input_data object
+            },
+            // Or extract specific known metadata keys
+            {
+                "target_key": "parameters.model_format",
+                "method": "direct_json_path", // Works on the input_data object
+                "json_path": "format", // If safetensors_metadata is the input_data
+                "optional": true
+            },
+            {
+                "target_key": "parameters.architecture", // Example if architecture is stored
+                "method": "direct_json_path",
+                "json_path": "architecture",
+                "optional": true
+            }
+            // You could also have a field that gets layer_info if it was added to context
+        ],
+        "output_template": {
+            "tool": "Safetensors Model",
+            "prompt": null, // Not applicable for model files directly
+            "parameters": {
+                "model_format": "$parameters.model_format",
+                "architecture": "$parameters.architecture",
+                "tool_specific": {
+                    "embedded_metadata": "$parameters.tool_specific.metadata"
+                    // Add layer count/info if extracted
+                }
+            }
+        }
+    }
+}

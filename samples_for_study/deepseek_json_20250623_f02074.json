@@ -1,0 +1,6 @@
+{
+  "target_key": "parameters.civitai_resources",
+  "method": "regex_extraction",
+  "pattern": "Civitai resources: (\\[{.*?}\\])",
+  "transformations": [{"type": "json_parse"}]
+}

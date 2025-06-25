@@ -1,0 +1,9 @@
+// Example: safetensors_python_parser_def.json
+{
+    "parser_name": "Safetensors Model File (Python Direct)",
+    "priority": 10, // Example priority
+    "target_file_types": ["SAFETENSORS"], // Custom type for the engine
+    "base_model_parser_class": "SafetensorsParser", // Special key for your ModelFileEngine
+    // No detection_rules or parsing_instructions here, as the Python class handles it.
+    "output_template": { /* Optional: for consistency if engine builds final UI dict */ }
+}

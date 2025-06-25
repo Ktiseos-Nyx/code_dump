@@ -1,0 +1,29 @@
+// In ideogram_exif_make.json
+"parsing_instructions": {
+    "fields": [
+        {
+            "target_key": "prompt",
+            "method": "direct_context_value",
+            // Assuming Ideogram puts the full prompt string here
+            "source_data_from_context": {
+                "type": "exif_tag_general", // Reuse this mechanism
+                "ifd": "0th",              // Specify IFD
+                "key": "ImageDescription"  // piexif.ImageIFD.ImageDescription
+            },
+            "value_type": "string",
+            "optional": true
+        },
+        // Maybe Ideogram uses a structured format within ImageDescription or UserComment
+        // e.g., "Prompt: my prompt text, Seed: 12345, ..."
+        // In that case, we'd use methods similar to A1111's KV parsing:
+        // {
+        //     "target_key": "parameters.seed",
+        //     "method": "key_value_extract_from_string_source", // New general KV method
+        //     "source_data_from_context": { "type": "exif_tag_general", "ifd": "0th", "key": "ImageDescription"},
+        //     "key_name": "Seed", "value_type": "integer", "optional": true
+        // },
+        // ... other fields ...
+        {"target_key": "negative_prompt", "method": "static_value", "value": null}, // etc.
+    ],
+    // output_template would then use these extracted values
+}

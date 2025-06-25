@@ -1,0 +1,6 @@
+"transformations": [
+    {
+        "type": "json_decode_string_value",
+        "path": "parameters" // Extract the value of the "parameters" key from the JSON in the chunk
+    }
+]

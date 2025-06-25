@@ -1,0 +1,70 @@
+{
+  "parser_name": "KJNodes Intrinsic LoRA Sampler",
+  "priority": 155, // High priority to catch this specific node
+
+  "detection_rules": [
+    // The signature is simple: the workflow contains this node.
+    {
+      "json_query_type": "has_any_node_class_type",
+      "class_types_to_check": ["Intrinsic_lora_sampling"]
+    }
+  ],
+
+  "parsing_instructions": {
+    "input_data": { /* ... */ },
+    "fields": [
+      // The prompt is constructed, so we need to get both parts.
+      {
+        "target_key": "_task_part",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "Intrinsic_lora_sampling" }],
+        "input_key": "task"
+      },
+      {
+        "target_key": "_text_part",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "Intrinsic_lora_sampling" }],
+        "input_key": "text"
+      },
+      // Now, combine them in the output template.
+
+      // The LoRA is an input widget.
+      {
+        "target_key": "parameters.loras", // We can treat it like a LoRA
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "Intrinsic_lora_sampling" }],
+        "input_key": "lora_name"
+        // In the output, we'd format this as a LoRA object.
+      },
+
+      // The core parameters are hard-coded, so we use "static_value".
+      {
+        "target_key": "parameters.steps",
+        "method": "static_value",
+        "value": 1
+      },
+      {
+        "target_key": "parameters.cfg_scale",
+        "method": "static_value",
+        "value": 1.0
+      },
+      {
+        "target_key": "parameters.seed",
+        "method": "static_value",
+        "value": "None (disabled)"
+      }
+    ]
+  },
+
+  "output_template": {
+    "tool": "ComfyUI (KJNodes Intrinsic LoRA)",
+    // We would need a new method to concatenate variables for the prompt
+    "prompt": { "method": "string_concatenate", "parts": ["$_task_part", ", ", "$_text_part"] },
+    "parameters": {
+        "lora_name": "$parameters.loras",
+        "steps": "$parameters.steps",
+        "cfg_scale": "$parameters.cfg_scale",
+        "seed": "$parameters.seed"
+    }
+  }
+}

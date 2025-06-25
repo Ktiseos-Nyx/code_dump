@@ -1,0 +1,142 @@
+{
+    "parser_name": "Midjourney-Style (from PNG tEXt Description)",
+    "priority": 120,
+    "target_file_types": ["PNG"],
+    "detection_rules": [
+        {
+            "comment": "Rule 1: Has a 'Description' PNG chunk.",
+            "source_type": "png_chunk", // Referring to your MetadataEngine's context_data.png_chunks
+            "source_key": "Description",
+            "operator": "exists"
+        },
+        {
+            "comment": "Rule 2: Description likely contains '--ar' or '--v' or 'Job ID:'.",
+            "source_type": "png_chunk",
+            "source_key": "Description",
+            "operator": "regex_match",
+            "regex_pattern": "(--ar\\s|--v\\s|Job ID:)"
+        },
+        {
+            "comment": "Rule 3: Optional - check for 'Author' chunk.",
+            "source_type": "png_chunk",
+            "source_key": "Author",
+            "operator": "exists",
+            "optional": true
+        }
+    ],
+    "parsing_instructions": {
+        // No single "input_data" string here; we'll pull from multiple chunks.
+        // The "fields" will specify their own sources.
+        "fields": [
+            {
+                "target_key": "prompt",
+                "method": "regex_capture_before_first_kv_match", // Re-use this concept
+                "source_data_from_context": { // New way to specify source for this field
+                    "type": "png_chunk",
+                    "key": "Description"
+                },
+                "kv_block_delimiter_pattern": "\\s--[a-zA-Z]", // Matches space, --, letter (start of a param)
+                "fallback_full_string": true // If no delimiter, use full string as prompt
+            },
+            // Parameters from Description string
+            {
+                "target_key": "parameters.tool_specific.aspect_ratio_str",
+                "method": "regex_extract_group",
+                "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+                "regex_pattern": "--ar\\s+([^\\s]+)",
+                "group_index": 1,
+                "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.width", // Will attempt to parse from aspect_ratio_str
+                "method": "derived_from_aspect_ratio",
+                "aspect_ratio_source_key": "parameters.tool_specific.aspect_ratio_str",
+                "reference_dimension_value_from_context": "width", // Use actual image width
+                "target_dimension": "width",
+                "optional": true
+            },
+            {
+                "target_key": "parameters.height",
+                "method": "derived_from_aspect_ratio",
+                "aspect_ratio_source_key": "parameters.tool_specific.aspect_ratio_str",
+                "reference_dimension_value_from_context": "height", // Use actual image height
+                "target_dimension": "height",
+                "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.version_str",
+                "method": "regex_extract_group",
+                "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+                "regex_pattern": "--v\\s+([^\\s]+)",
+                "group_index": 1,
+                "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.stylize",
+                "method": "regex_extract_group",
+                "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+                "regex_pattern": "--stylize\\s+(\\d+)",
+                "group_index": 1,
+                "value_type": "integer", "optional": true
+            },
+            {
+                "target_key": "parameters.seed", // Midjourney seeds are often not in this string directly
+                "method": "static_value", "value": null, "optional": true // Or try to find if available
+            },
+            {
+                "target_key": "parameters.tool_specific.job_id",
+                "method": "regex_extract_group",
+                "source_data_from_context": {"type": "png_chunk", "key": "Description"},
+                "regex_pattern": "Job ID:\\s*([\\w-]+)",
+                "group_index": 1,
+                "value_type": "string", "optional": true
+            },
+            // Direct fields from other chunks
+            {
+                "target_key": "parameters.tool_specific.author",
+                "method": "direct_context_value",
+                "source_data_from_context": {"type": "png_chunk", "key": "Author"},
+                "value_type": "string", "optional": true
+            },
+            {
+                "target_key": "parameters.tool_specific.creation_time",
+                "method": "direct_context_value",
+                "source_data_from_context": {"type": "png_chunk", "key": "Creation Time"},
+                "value_type": "string", "optional": true
+            },
+            // XMP Data (example of extracting from XMP string)
+            {
+                "target_key": "parameters.tool_specific.xmp_digImageGUID",
+                "method": "regex_extract_group",
+                "source_data_from_context": {"type": "xmp_string"}, // context_data.xmp_string
+                "regex_pattern": "iptcExt:DigImageGUID=\\\"([\\w-]+)\\\"", // Escaped quotes
+                "group_index": 1,
+                "value_type": "string", "optional": true
+            }
+        ],
+        "output_template": {
+            "tool": "Midjourney-Style (Text Chunks)",
+            "prompt": "$prompt",
+            "negative_prompt": "", // MJ usually doesn't have explicit negative here
+            "parameters": {
+                "steps": null, // Not typically in this format
+                "sampler": null,
+                "cfg_scale": null,
+                "seed": "$parameters.seed",
+                "width": "$parameters.width", // Derived or from context
+                "height": "$parameters.height",// Derived or from context
+                "model": null, // Usually defined by --v or implicit
+                "tool_specific": {
+                    "author": "$parameters.tool_specific.author",
+                    "creation_time": "$parameters.tool_specific.creation_time",
+                    "aspect_ratio_str": "$parameters.tool_specific.aspect_ratio_str",
+                    "version_str": "$parameters.tool_specific.version_str",
+                    "stylize": "$parameters.tool_specific.stylize",
+                    "job_id": "$parameters.tool_specific.job_id",
+                    "xmp_guid": "$parameters.tool_specific.xmp_digImageGUID"
+                }
+            },
+            "workflow": null // Not a workflow format
+        }
+    }
+}

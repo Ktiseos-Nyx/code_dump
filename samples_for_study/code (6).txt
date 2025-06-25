@@ -1,0 +1,175 @@
+{
+    "parser_name": "ComfyUI (Generic Workflow Traversal)",
+    "priority": 100, // Lower than Civitai with extraMetadata, higher than basic unknown
+    "target_file_types": ["PNG"],
+    "detection_rules": [
+        {
+            "comment": "Rule 1: Chunk 'workflow' or 'prompt' contains JSON.",
+            "source_type": "pil_info_key",
+            "source_key": "workflow", // Or "prompt"
+            "operator": "is_valid_json"
+        },
+        {
+            "comment": "Rule 2: Check for presence of node ID keys (e.g., '1', '10001'). Heuristic.",
+            "source_type": "pil_info_key_json_path_query", // Check if JSON contains keys matching a pattern
+            "source_key": "workflow",
+            "json_query_type": "has_numeric_string_keys", // Custom query type
+            "operator": "is_true" // Assuming the query returns true/false
+        },
+        {
+            "comment": "Rule 3: Ensure 'extra.extraMetadata' does NOT exist (to not conflict with the higher priority parser)",
+            "source_type": "pil_info_key_json_path",
+            "source_key": "workflow",
+            "json_path": "extra.extraMetadata",
+            "operator": "not_exists" // Or check if it's not a parsable JSON string
+        }
+    ],
+    "parsing_instructions": {
+        "input_data": {
+            "source_type": "pil_info_key",
+            "source_key": "workflow", // The PNG chunk containing the ComfyUI workflow JSON
+            "transformations": [
+                { "type": "json_decode_string_itself" } // Parse the chunk string into a JSON object
+            ]
+            // The input_data is now the entire workflow graph object
+        },
+        "fields": [
+            // Prompts - this is tricky. We need to find the right nodes.
+            // Method: Find node by class_type, then get input.
+            // We might need to iterate through nodes or specify node IDs if predictable.
+            // For now, let's assume a method that can find node(s) by class_type and extract.
+            {
+                "target_key": "prompt",
+                "method": "comfy_find_node_input",
+                "node_criteria": [ // List of criteria to find the positive prompt node
+                    // Option 1: By class_type and a known input field for text
+                    {"class_type": "BNK_CLIPTextEncodeAdvanced", "input_key": "text", "meta_title_contains_priority": ["Positive", "Prompt"]},
+                    {"class_type": "CLIPTextEncode", "input_key": "text", "meta_title_contains_priority": ["Positive", "Prompt"]},
+                    {"class_type": "smZ CLIPTextEncode", "input_key": "text", "meta_title_contains_priority": ["Positive", "Prompt"]},
+                    // More specific for the example: node "10028"
+                    {"node_id": "10028", "input_key": "text"} // This is too specific for a generic parser
+                ],
+                "value_type": "string",
+                "select_first_match": true // Take the first node that matches criteria
+            },
+            {
+                "target_key": "negative_prompt",
+                "method": "comfy_find_node_input",
+                "node_criteria": [
+                    {"class_type": "BNK_CLIPTextEncodeAdvanced", "input_key": "text", "meta_title_contains_priority": ["Negative"]},
+                    {"class_type": "CLIPTextEncode", "input_key": "text", "meta_title_contains_priority": ["Negative"]},
+                    {"class_type": "smZ CLIPTextEncode", "input_key": "text", "meta_title_contains_priority": ["Negative"]},
+                    {"node_id": "10029", "input_key": "text"}
+                ],
+                "value_type": "string",
+                "select_first_match": true
+            },
+            // KSampler Parameters
+            {
+                "target_key": "parameters.seed",
+                "method": "comfy_find_node_input",
+                "node_criteria": [
+                    {"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}, {"class_type": "KSamplerAdvanced"}
+                ],
+                "input_key": "seed", // The input field name in KSampler node
+                "value_type": "integer",
+                "select_first_match": true // Usually one main KSampler, but could be multiple
+            },
+            {
+                "target_key": "parameters.steps",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}],
+                "input_key": "steps",
+                "value_type": "integer",
+                "select_first_match": true
+            },
+            {
+                "target_key": "parameters.cfg_scale",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}],
+                "input_key": "cfg",
+                "value_type": "float",
+                "select_first_match": true
+            },
+            {
+                "target_key": "parameters.sampler", // Standardized key
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}],
+                "input_key": "sampler_name", // Actual key in ComfyUI KSampler
+                "value_type": "string",
+                "select_first_match": true
+            },
+            {
+                "target_key": "parameters.scheduler",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}],
+                "input_key": "scheduler",
+                "value_type": "string",
+                "select_first_match": true,
+                "optional": true
+            },
+            {
+                "target_key": "parameters.denoise",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "KSampler"}, {"class_type": "KSampler_A1111"}],
+                "input_key": "denoise",
+                "value_type": "float",
+                "select_first_match": true,
+                "optional": true
+            },
+            // Model
+            {
+                "target_key": "parameters.model",
+                "method": "comfy_find_node_input",
+                "node_criteria": [
+                    {"class_type": "CheckpointLoaderSimple"}, {"class_type": "ECHOCheckpointLoaderSimple"}, {"class_type": "CheckpointLoader"}
+                ],
+                "input_key": "ckpt_name",
+                "value_type": "string",
+                "select_first_match": true
+            },
+            // Dimensions (from EmptyLatentImage or similar)
+            {
+                "target_key": "parameters.width",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "EmptyLatentImage"}],
+                "input_key": "width",
+                "value_type": "integer",
+                "select_first_match": true, // Usually one initial latent
+                "optional": true // Fallback to context
+            },
+            {
+                "target_key": "parameters.height",
+                "method": "comfy_find_node_input",
+                "node_criteria": [{"class_type": "EmptyLatentImage"}],
+                "input_key": "height",
+                "value_type": "integer",
+                "select_first_match": true,
+                "optional": true // Fallback to context
+            }
+            // Add Lora info extraction if possible, looking for LoraLoader nodes
+            // This would likely be a list of objects.
+        ],
+        "output_template": {
+            // Similar to the Civitai one, but tool name changes
+            "tool": "ComfyUI (Workflow Parsed)",
+            "prompt": "$prompt",
+            "negative_prompt": "$negative_prompt",
+            "parameters": {
+                "steps": "$parameters.steps",
+                "sampler": "$parameters.sampler",
+                "scheduler": "$parameters.scheduler",
+                "cfg_scale": "$parameters.cfg_scale",
+                "seed": "$parameters.seed",
+                "denoise": "$parameters.denoise",
+                "width": "$parameters.width",
+                "height": "$parameters.height",
+                "model": "$parameters.model",
+                "tool_specific": {
+                    // Could add extracted LoRAs, custom node data etc. here
+                }
+            },
+            "workflow": "$INPUT_STRING_ORIGINAL_CHUNK" // The full workflow JSON
+        }
+    }
+}

@@ -1,0 +1,53 @@
+{
+    "parser_name": "Plain Text Prompt File (.txt)",
+    "priority": 40, // Relatively low, but higher than generic image fallback
+    "target_file_types": ["TXT"], // Explicitly target .txt files
+                                 // The MetadataEngine needs to determine file type by extension
+                                 // if PIL fails for non-image files.
+    "detection_rules": [
+        {
+            "comment": "Rule 1: File type must be TXT.",
+            "source_type": "file_extension", // New source_type for engine
+            "operator": "equals_case_insensitive",
+            "value": "txt"
+        }
+        // No other rules needed, as we assume any .txt file content is a prompt.
+    ],
+    "parsing_instructions": {
+        "input_data": {
+            // The engine needs a way to get the raw text content of a non-image file.
+            "source_type": "file_content_raw_text" // New source_type
+        },
+        "fields": [
+            {
+                "target_key": "prompt",
+                "method": "direct_string_value" // Takes the entire input_data string
+            },
+            // All other AI parameters would be null/default
+            {"target_key": "negative_prompt", "method": "static_value", "value": null},
+            {"target_key": "parameters.steps", "method": "static_value", "value": null},
+            {"target_key": "parameters.sampler", "method": "static_value", "value": null},
+            {"target_key": "parameters.cfg_scale", "method": "static_value", "value": null},
+            {"target_key": "parameters.seed", "method": "static_value", "value": null},
+            {"target_key": "parameters.model", "method": "static_value", "value": null},
+            {"target_key": "parameters.width", "method": "static_value", "value": 0}, // No image context
+            {"target_key": "parameters.height", "method": "static_value", "value": 0}
+        ],
+        "output_template": {
+            "tool": "Text Prompt File",
+            "prompt": "$prompt",
+            "negative_prompt": "$negative_prompt",
+            "parameters": {
+                "steps": "$parameters.steps",
+                "sampler": "$parameters.sampler",
+                "cfg_scale": "$parameters.cfg_scale",
+                "seed": "$parameters.seed",
+                "width": "$parameters.width",
+                "height": "$parameters.height",
+                "model": "$parameters.model",
+                "tool_specific": {}
+            },
+            "workflow": null
+        }
+    }
+}

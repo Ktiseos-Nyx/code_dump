@@ -1,0 +1,45 @@
+{
+  "parser_name": "ComfyUI (FLUX Dev Style)",
+  "priority": 142, // High priority to catch this specific style
+
+  "detection_rules": [
+    // The key signature is the presence of these specific, deconstructed nodes.
+    { "json_query_type": "has_any_node_class_type", "class_types_to_check": ["BasicGuider", "BasicScheduler", "SamplerCustomAdvanced"] }
+  ],
+
+  "parsing_instructions": {
+    "input_data": { /* ... */ },
+    
+    "fields": [
+      // Prompt is still easy, it comes from a standard CLIPTextEncode
+      {
+        "target_key": "prompt",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "CLIPTextEncode" }],
+        "input_key": "text"
+      },
+      
+      // Now we hunt for the scattered parameters
+      {
+        "target_key": "parameters.steps",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "BasicScheduler" }],
+        "input_key": "steps"
+      },
+      {
+        "target_key": "parameters.seed",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "RandomNoise" }],
+        "input_key": "noise_seed" // Or whatever the widget is called
+      },
+      {
+        "target_key": "parameters.sampler_name",
+        "method": "comfy_find_node_input",
+        "node_criteria": [{ "class_type": "KSamplerSelect" }],
+        "input_key": "sampler_name"
+      },
+      // And so on... you get the idea.
+    ]
+  },
+  "output_template": { /* ... */ }
+}
