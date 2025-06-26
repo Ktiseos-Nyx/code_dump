@@ -1,0 +1,307 @@
+{
+  "generic_fallback_parser": {
+    "parser_name": "Generic Image Metadata (Fallback)",
+    "priority": 15,
+    "description": "Fallback parser for non-AI images and unknown AI platforms",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    "purpose": "safety_net_for_everything_else",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP", "TIFF", "GIF", "BMP"],
+    
+    "detection_rules": [
+      {
+        "comment": "This is the fallback - catches anything with basic image metadata",
+        "method": "detect_basic_image_with_metadata",
+        
+        "required_conditions": [
+          {
+            "field": "pil_info",
+            "exists": true,
+            "type": "dictionary",
+            "comment": "PIL can extract some metadata"
+          },
+          {
+            "field": "pil_info",
+            "has_any_of": ["Software", "dpi", "icc_profile", "gamma", "chromaticity", "Comment", "Description"],
+            "comment": "Has at least some standard metadata fields"
+          }
+        ],
+        
+        "exclusion_rules": [
+          {
+            "field": "parameters",
+            "format": "not_ai_generation_metadata",
+            "comment": "Doesn't have AI generation markers"
+          },
+          {
+            "field": "exif.usercomment", 
+            "format": "not_ai_generation_metadata",
+            "comment": "No AI metadata in EXIF either"
+          },
+          {
+            "note": "If other parsers matched, they would have higher priority"
+          }
+        ],
+        
+        "detection_logic": "has_basic_metadata_but_not_ai_specific"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Extract whatever basic metadata we can find",
+        "primary_source": "pil_info_dictionary",
+        "secondary_sources": ["exif_data", "png_chunks"],
+        "philosophy": "be_helpful_with_whatever_data_exists"
+      },
+      
+      "extraction_method": "opportunistic_metadata_gathering",
+      
+      "ai_generation_fields": {
+        "prompt": {
+          "method": "static_null",
+          "value": null,
+          "comment": "Not an AI-generated image"
+        },
+        "negative_prompt": {
+          "method": "static_null",
+          "value": null
+        }
+      },
+      
+      "basic_image_info": [
+        {
+          "name": "software",
+          "source": "pil_info.Software",
+          "type": "string",
+          "optional": true,
+          "description": "Image editing software, camera software, or AI platform name",
+          "examples": ["Adobe Photoshop", "GIMP", "Canon EOS", "Unknown AI Platform"]
+        },
+        {
+          "name": "dimensions",
+          "source": "image_file_analysis",
+          "fields": ["width", "height"],
+          "type": "integers",
+          "required": true,
+          "comment": "Always available from image file"
+        }
+      ],
+      
+      "technical_metadata": [
+        {
+          "name": "dpi_resolution",
+          "source": "pil_info.dpi",
+          "type": "tuple_to_separate_fields",
+          "outputs": ["dpi_x", "dpi_y"],
+          "optional": true,
+          "description": "Image resolution in dots per inch"
+        },
+        {
+          "name": "gamma",
+          "source": "pil_info.gamma",
+          "type": "float",
+          "optional": true,
+          "description": "Gamma correction value"
+        },
+        {
+          "name": "color_profile",
+          "source": "pil_info.icc_profile",
+          "type": "bytes_to_summary",
+          "optional": true,
+          "description": "ICC color profile information",
+          "summary_format": "present_with_size_info"
+        },
+        {
+          "name": "chromaticity",
+          "source": "pil_info.chromaticity",
+          "type": "object_to_string",
+          "optional": true,
+          "description": "Color chromaticity information"
+        }
+      ],
+      
+      "potential_ai_clues": [
+        {
+          "name": "comment_text",
+          "source": "pil_info.Comment",
+          "type": "string",
+          "optional": true,
+          "description": "Comment field - might contain AI info we don't recognize"
+        },
+        {
+          "name": "description_text",
+          "source": "pil_info.Description", 
+          "type": "string",
+          "optional": true,
+          "description": "Description field - might be prompt-like text"
+        },
+        {
+          "name": "unknown_metadata_hint",
+          "method": "detect_potential_ai_patterns",
+          "sources": ["Comment", "Description", "Software"],
+          "patterns": ["seed", "steps", "cfg", "prompt", "model"],
+          "optional": true,
+          "description": "Might be unknown AI platform"
+        }
+      ],
+      
+      "file_technical_info": [
+        {
+          "name": "file_format",
+          "source": "image_format_detection",
+          "type": "string",
+          "description": "PNG, JPEG, WEBP, etc."
+        },
+        {
+          "name": "color_mode",
+          "source": "pil_mode",
+          "type": "string", 
+          "description": "RGB, RGBA, L, etc."
+        },
+        {
+          "name": "file_size_estimate",
+          "source": "image_analysis",
+          "type": "calculation",
+          "optional": true,
+          "description": "Estimated file size category"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "{software_or_unknown}",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "generic_image_metadata",
+      "is_ai_generated": false,
+      "confidence": "fallback_parser",
+      
+      "prompt": null,
+      "negative_prompt": null,
+      
+      "parameters": {
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "image_metadata": {
+        "software": "{software}",
+        "file_format": "{file_format}",
+        "color_mode": "{color_mode}",
+        "dpi_x": "{dpi_x}",
+        "dpi_y": "{dpi_y}",
+        "gamma": "{gamma}",
+        "has_color_profile": "{icc_profile_present}",
+        "color_profile_info": "{icc_profile_summary}",
+        "chromaticity": "{chromaticity}"
+      },
+      
+      "potential_ai_clues": {
+        "comment_text": "{comment_text}",
+        "description_text": "{description_text}",
+        "unknown_ai_hint": "{unknown_metadata_hint}",
+        "suggestion": "might_need_new_parser_if_ai_generated"
+      },
+      
+      "raw_pil_info": "{pil_info_safe_summary}"
+    }
+  },
+
+  "fallback_parser_philosophy": {
+    "primary_purpose": "Be helpful with whatever data exists",
+    "secondary_purpose": "Catch unknown AI platforms for future parser development",
+    "approach": "Extract basic info + flag potential AI patterns",
+    
+    "use_cases": [
+      {
+        "type": "regular_photos",
+        "examples": ["Camera photos", "Screenshots", "Graphics"],
+        "extraction": "Technical metadata only"
+      },
+      {
+        "type": "edited_images", 
+        "examples": ["Photoshop files", "GIMP exports", "Design software"],
+        "extraction": "Software info + technical metadata"
+      },
+      {
+        "type": "unknown_ai_platforms",
+        "examples": ["New AI sites", "Experimental tools", "Custom implementations"],
+        "extraction": "Flag for manual parser creation"
+      },
+      {
+        "type": "minimal_metadata_ai",
+        "examples": ["AI platforms with basic info only"],
+        "extraction": "Whatever metadata exists + AI hints"
+      }
+    ]
+  },
+
+  "ai_detection_hints": {
+    "comment": "Help identify unknown AI platforms for parser development",
+    
+    "text_pattern_detection": [
+      {
+        "pattern": "seed|steps|cfg|sampler",
+        "confidence": "likely_ai_generated",
+        "action": "suggest_custom_parser_needed"
+      },
+      {
+        "pattern": "prompt|negative|model|checkpoint", 
+        "confidence": "very_likely_ai_generated",
+        "action": "flag_for_parser_development"
+      },
+      {
+        "pattern": "stable.diffusion|midjourney|dall.e",
+        "confidence": "definitely_ai_generated",
+        "action": "investigate_metadata_format"
+      }
+    ],
+    
+    "software_name_hints": [
+      {
+        "pattern": ".*AI.*|.*Diffusion.*|.*Neural.*",
+        "confidence": "likely_ai_platform",
+        "action": "check_for_additional_metadata"
+      }
+    ]
+  },
+
+  "implementation_strategy": {
+    "extraction_approach": [
+      "1. Extract all available PIL metadata",
+      "2. Categorize as technical vs potential AI info",
+      "3. Flag suspicious patterns for investigation",
+      "4. Return useful data regardless of AI status"
+    ],
+    
+    "error_handling": [
+      "Missing metadata: Return basic image info only",
+      "Corrupt metadata: Extract what's readable", 
+      "Unknown formats: Document for future parser development"
+    ],
+    
+    "extensibility": [
+      "Log unknown patterns for analysis",
+      "Easy to upgrade when new AI platforms discovered",
+      "Feeds back into parser development process"
+    ]
+  },
+
+  "why_this_parser_matters": [
+    "Safety net: Ensures no image goes completely unprocessed",
+    "Discovery tool: Helps identify new AI platforms needing parsers",
+    "User value: Provides useful info even for non-AI images", 
+    "Development aid: Flags patterns that need investigation",
+    "Complete coverage: Handles the long tail of edge cases"
+  ],
+
+  "gemini_overcomplicated": [
+    "Original: 'direct_json_path_transform_tuple_element' for DPI extraction",
+    "Unfudged: Just extract tuple[0] and tuple[1]",
+    "Original: 'summarize_bytes_from_json_path' for ICC profiles",
+    "Unfudged: Check if bytes exist, note size",
+    "Original: Complex PIL info transformation pipelines",
+    "Unfudged: Extract the fields people actually care about"
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "easydiffusion_parser": {
+    "parser_name": "Easy Diffusion (Reluctantly Unfudged)",
+    "priority": 70,
+    "description": "Easy Diffusion - The platform people use despite better alternatives existing",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    "note": "Created with mild frustration but professional dedication",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP"],
+    
+    "platform_info": {
+      "description": "Easy Diffusion aims to be user-friendly but has inconsistent design choices",
+      "target_audience": "Beginners who want simple AI art generation",
+      "reality": "Simple interface, confusing metadata conventions",
+      "user_sentiment": "mixed_to_negative_among_power_users"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Easy Diffusion stores JSON with their unique field naming inconsistencies",
+        "method": "detect_easydiffusion_json_patterns",
+        
+        "required_json_source": {
+          "sources": ["exif_usercomment", "parameters_png_chunk", "comment_png_chunk"],
+          "format": "valid_json",
+          "required": true
+        },
+        
+        "easydiffusion_signature_fields": [
+          {
+            "fields": ["prompt", "Prompt"],
+            "description": "Can't decide on capitalization",
+            "confidence": "medium"
+          },
+          {
+            "field": "num_inference_steps",
+            "instead_of": "steps",
+            "description": "Verbose naming convention",
+            "confidence": "high"
+          },
+          {
+            "field": "guidance_scale",
+            "instead_of": "cfg_scale",
+            "description": "Technical naming",
+            "confidence": "medium"
+          },
+          {
+            "field": "use_stable_diffusion_model",
+            "description": "Stores full file paths",
+            "confidence": "very_high",
+            "comment": "Very specific to Easy Diffusion"
+          },
+          {
+            "field": "use_vae_model",
+            "description": "Another file path field",
+            "confidence": "high"
+          }
+        ],
+        
+        "detection_logic": "json_with_easydiffusion_verbose_field_naming"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Handle Easy Diffusion's inconsistent field naming conventions",
+        "sources": ["EXIF UserComment", "PNG parameters chunk", "PNG Comment chunk"],
+        "format": "json_with_inconsistent_naming",
+        "challenge": "multiple_possible_field_names_for_same_data"
+      },
+      
+      "extraction_method": "easydiffusion_flexible_field_extraction",
+      
+      "prompt_fields_with_capitalization_chaos": [
+        {
+          "name": "prompt",
+          "possible_fields": ["prompt", "Prompt"],
+          "method": "try_lowercase_first_then_capitalized",
+          "type": "string",
+          "description": "They couldn't decide on capitalization"
+        },
+        {
+          "name": "negative_prompt",
+          "possible_fields": ["negative_prompt", "Negative Prompt"],
+          "method": "try_underscore_first_then_spaces",
+          "type": "string",
+          "fallback": "",
+          "description": "More capitalization inconsistency"
+        }
+      ],
+      
+      "verbose_parameter_names": [
+        {
+          "name": "steps",
+          "easydiffusion_field": "num_inference_steps",
+          "type": "integer",
+          "description": "Why say 'steps' when you can say 'num_inference_steps'?"
+        },
+        {
+          "name": "cfg_scale",
+          "easydiffusion_field": "guidance_scale",
+          "type": "float",
+          "description": "Technical naming instead of common usage"
+        },
+        {
+          "name": "seed",
+          "easydiffusion_field": "seed",
+          "type": "integer_or_string",
+          "description": "At least this one is normal"
+        },
+        {
+          "name": "sampler_name",
+          "easydiffusion_field": "sampler_name",
+          "type": "string",
+          "description": "Another normal one"
+        }
+      ],
+      
+      "file_path_fields": [
+        {
+          "name": "model",
+          "easydiffusion_field": "use_stable_diffusion_model",
+          "type": "filepath_to_filename",
+          "description": "Stores full paths, we extract filenames",
+          "processing": "extract_filename_from_path"
+        },
+        {
+          "name": "vae_model",
+          "easydiffusion_field": "use_vae_model", 
+          "type": "filepath_to_filename",
+          "description": "Another full path field",
+          "processing": "extract_filename_from_path",
+          "optional": true
+        }
+      ],
+      
+      "standard_fields": [
+        {
+          "name": "width",
+          "easydiffusion_field": "width",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "height",
+          "easydiffusion_field": "height", 
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "clip_skip",
+          "easydiffusion_field": "clip_skip",
+          "type": "integer",
+          "optional": true
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Easy Diffusion",
+      "parser_version": "reluctantly_unfudged_v1",
+      "workflow_type": "easydiffusion_inconsistent_naming",
+      "parsing_difficulty": "annoying_but_manageable",
+      
+      "prompt": "{prompt_from_either_capitalization}",
+      "negative_prompt": "{negative_prompt_from_either_format}",
+      
+      "parameters": {
+        "seed": "{seed}",
+        "steps": "{num_inference_steps}",
+        "cfg_scale": "{guidance_scale}",
+        "sampler_name": "{sampler_name}",
+        "model": "{filename_from_use_stable_diffusion_model}",
+        "vae_model": "{filename_from_use_vae_model}",
+        "width": "{width}",
+        "height": "{height}",
+        "clip_skip": "{clip_skip}"
+      },
+      
+      "easydiffusion_quirks": {
+        "field_naming_consistency": "nonexistent",
+        "capitalization_logic": "random",
+        "verbosity_level": "unnecessarily_high",
+        "file_path_storage": "why_store_full_paths_when_filenames_would_work"
+      },
+      
+      "raw_metadata": "{original_json}"
+    }
+  },
+
+  "easydiffusion_frustrations_documented": {
+    "naming_inconsistencies": [
+      {
+        "issue": "prompt vs Prompt",
+        "problem": "Can't decide on capitalization",
+        "solution": "Try both variants"
+      },
+      {
+        "issue": "negative_prompt vs 'Negative Prompt'",
+        "problem": "Underscores vs spaces inconsistency",
+        "solution": "Check both formats"
+      },
+      {
+        "issue": "num_inference_steps vs steps",
+        "problem": "Unnecessarily verbose naming",
+        "solution": "Map to standard 'steps' field"
+      },
+      {
+        "issue": "guidance_scale vs cfg_scale",
+        "problem": "Different from community standard",
+        "solution": "Map to standard 'cfg_scale'"
+      }
+    ],
+    
+    "file_path_annoyances": [
+      {
+        "field": "use_stable_diffusion_model",
+        "stores": "/full/path/to/model.safetensors",
+        "we_want": "model.safetensors",
+        "solution": "Extract filename from path"
+      },
+      {
+        "field": "use_vae_model", 
+        "same_problem": "Full paths instead of filenames",
+        "solution": "More filename extraction"
+      }
+    ],
+    
+    "why_this_is_frustrating": [
+      "Inconsistent field naming makes parsing annoying",
+      "Verbose names for no clear benefit",
+      "File paths instead of filenames wastes space",
+      "Capitalization randomness suggests poor planning",
+      "Could have used existing community standards"
+    ]
+  },
+
+  "easydiffusion_vs_better_platforms": {
+    "easy_diffusion_approach": {
+      "prompt_field": "prompt OR Prompt (inconsistent)",
+      "steps_field": "num_inference_steps (verbose)",
+      "cfg_field": "guidance_scale (non-standard)",
+      "model_field": "use_stable_diffusion_model (full path)"
+    },
+    
+    "better_platforms_approach": {
+      "prompt_field": "prompt (consistent)",
+      "steps_field": "steps (concise)",
+      "cfg_field": "cfg_scale (community standard)",
+      "model_field": "model (filename)"
+    },
+    
+    "lesson": "Consistency and community standards matter"
+  },
+
+  "why_people_still_use_it": [
+    "Marketing suggests it's 'easy' (debatable)",
+    "Some people tried it first and stuck with it",
+    "Lower technical barrier than ComfyUI",
+    "Works well enough for basic use cases",
+    "Inertia - switching platforms takes effort"
+  ],
+
+  "implementation_notes": {
+    "field_resolution_strategy": [
+      "Try common naming first (prompt, negative_prompt)",
+      "Fall back to Easy Diffusion variants (Prompt, Negative Prompt)",
+      "Map verbose names to standard names",
+      "Extract filenames from full paths"
+    ],
+    
+    "filename_extraction": [
+      "use_stable_diffusion_model: '/path/model.safetensors' → 'model.safetensors'",
+      "use_vae_model: '/path/vae.pt' → 'vae.pt'",
+      "Simple path splitting, take last component"
+    ],
+    
+    "error_handling": [
+      "Missing fields: Use fallbacks",
+      "Invalid paths: Return raw value",
+      "Capitalization variants: Try all options"
+    ]
+  },
+
+  "professional_obligation": {
+    "despite_frustrations": [
+      "Users depend on this parser working",
+      "Professional software supports what users actually use",
+      "Not our place to judge platform choices",
+      "Make the best parser possible regardless of personal opinion"
+    ],
+    
+    "silver_lining": [
+      "At least it uses JSON (not text parsing)",
+      "Field extraction is straightforward once you know the patterns",
+      "Covers basic use cases adequately",
+      "Users get working metadata extraction"
+    ]
+  },
+
+  "gemini_overcomplicated": [
+    "Original: 'direct_json_path_coalesce' for simple field alternatives",
+    "Unfudged: Try field A, if not found try field B",
+    "Original: 'direct_json_path_transform' with extract_filename",
+    "Unfudged: Split path on '/' and take last part",
+    "Original: Complex transformation pipelines",
+    "Unfudged: Handle the quirks directly and move on"
+  ],
+
+  "notes": [
+    "Easy Diffusion: The platform that could have been better with consistency",
+    "Naming conventions: A masterclass in what not to do",
+    "File paths: Why store full paths when filenames work?", 
+    "User support: We parse it anyway because users deserve working tools",
+    "Lesson learned: Standards exist for good reasons"
+  ]
+}

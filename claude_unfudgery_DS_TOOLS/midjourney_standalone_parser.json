@@ -1,0 +1,340 @@
+{
+  "midjourney_parser": {
+    "parser_name": "Midjourney Discord Bot",
+    "priority": 130,
+    "description": "Midjourney AI art platform - Discord bot with command-line style metadata",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "platform_info": {
+      "description": "Midjourney is a Discord-based AI art platform",
+      "unique_features": ["Discord bot interface", "Command-line style prompts", "Version-specific models", "No negative prompts"],
+      "current_versions": ["v5", "v5.1", "v5.2", "v6", "v6.1", "v7", "niji 5", "niji 6"],
+      "generation_method": "discord_slash_commands"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Midjourney stores everything as Discord command format in Description",
+        "method": "detect_midjourney_command_signature",
+        
+        "required_structure": [
+          {
+            "field": "Description",
+            "source": "png_chunk",
+            "exists": true,
+            "required": true,
+            "comment": "All Midjourney data goes here"
+          }
+        ],
+        
+        "signature_patterns": [
+          {
+            "pattern": "--ar\\s+",
+            "description": "Aspect ratio flag",
+            "confidence": "high"
+          },
+          {
+            "pattern": "--v\\s+[567]",
+            "description": "Version flag (v5, v6, v7)",
+            "confidence": "very_high"
+          },
+          {
+            "pattern": "--niji\\s+",
+            "description": "Niji anime model flag",
+            "confidence": "very_high"
+          },
+          {
+            "pattern": "Job ID:",
+            "description": "Discord job identifier",
+            "confidence": "definitive"
+          },
+          {
+            "pattern": "--chaos\\s+",
+            "description": "Chaos parameter (Midjourney-specific)",
+            "confidence": "high"
+          },
+          {
+            "pattern": "--stylize\\s+",
+            "description": "Stylization parameter",
+            "confidence": "high"
+          },
+          {
+            "pattern": "--weird\\s+",
+            "description": "Weirdness parameter (v6+)",
+            "confidence": "high"
+          }
+        ],
+        
+        "detection_logic": "description_chunk_with_midjourney_command_flags",
+        "minimum_confidence": "requires_at_least_one_high_confidence_pattern",
+        
+        "exclusion_rules": [
+          {
+            "field": "parameters",
+            "format": "not_fooocus_json",
+            "comment": "Distinguish from Fooocus which also uses Description"
+          },
+          {
+            "field": "Comment",
+            "format": "not_novelai_json",
+            "comment": "Distinguish from other platforms"
+          }
+        ]
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Everything stored in Description chunk as Discord command format",
+        "primary_source": "Description PNG chunk",
+        "format": "discord_command_with_flags",
+        "example": "a beautiful anime girl --ar 2:3 --v 6 --stylize 100 --chaos 20 Job ID: abc123",
+        "secondary_sources": ["Author chunk", "Creation Time chunk", "XMP metadata"]
+      },
+      
+      "extraction_method": "command_line_parsing",
+      
+      "prompt_extraction": {
+        "positive_prompt": {
+          "method": "extract_text_before_flags",
+          "description": "Everything before the first -- flag or Job ID:",
+          "regex": "^(.*?)(?:\\s--[a-zA-Z]|\\sJob ID:)",
+          "fallback": "full_description_if_no_flags",
+          "cleanup": ["trim_whitespace", "remove_extra_spaces"]
+        },
+        
+        "negative_prompt": {
+          "method": "static_empty",
+          "value": "",
+          "comment": "Midjourney doesn't support negative prompts"
+        }
+      },
+      
+      "parameter_extraction": {
+        "core_midjourney_flags": [
+          {
+            "name": "aspect_ratio",
+            "flag": "--ar",
+            "pattern": "--ar\\s+([^\\s]+)",
+            "type": "string",
+            "description": "Image aspect ratio (e.g., 16:9, 1:1, 2:3)",
+            "common_values": ["1:1", "3:2", "2:3", "16:9", "9:16", "4:3"]
+          },
+          {
+            "name": "version",
+            "flag": "--v",
+            "pattern": "--v\\s+([^\\s]+)",
+            "type": "string", 
+            "description": "Midjourney model version",
+            "common_values": ["5", "5.1", "5.2", "6", "6.1", "7"]
+          },
+          {
+            "name": "niji_version",
+            "flag": "--niji",
+            "pattern": "--niji\\s+([^\\s]+)",
+            "type": "string",
+            "description": "Niji anime model version",
+            "common_values": ["5", "6"]
+          },
+          {
+            "name": "stylize",
+            "flag": "--stylize",
+            "pattern": "--stylize\\s+(\\d+)",
+            "type": "integer",
+            "description": "Stylization strength (0-1000)",
+            "range": [0, 1000],
+            "default": 100
+          },
+          {
+            "name": "chaos",
+            "flag": "--chaos",
+            "pattern": "--chaos\\s+(\\d+)",
+            "type": "integer", 
+            "description": "Chaos/variety level (0-100)",
+            "range": [0, 100],
+            "default": 0
+          },
+          {
+            "name": "weird",
+            "flag": "--weird",
+            "pattern": "--weird\\s+(\\d+)",
+            "type": "integer",
+            "description": "Weirdness factor (0-3000, v6+)",
+            "range": [0, 3000],
+            "version_introduced": "v6"
+          },
+          {
+            "name": "quality",
+            "flag": "--q",
+            "pattern": "--q\\s+([^\\s]+)",
+            "type": "string",
+            "description": "Render quality (.25, .5, 1, 2)",
+            "common_values": [".25", ".5", "1", "2"]
+          },
+          {
+            "name": "seed",
+            "flag": "--seed",
+            "pattern": "--seed\\s+(\\d+)",
+            "type": "integer",
+            "description": "Random seed for reproducibility"
+          }
+        ],
+        
+        "discord_metadata": [
+          {
+            "name": "job_id",
+            "pattern": "Job ID:\\s*([\\w-]+)",
+            "type": "string",
+            "description": "Discord generation job identifier",
+            "comment": "Links back to Discord bot generation"
+          }
+        ],
+        
+        "additional_metadata": [
+          {
+            "name": "author",
+            "source": "Author_chunk",
+            "method": "direct_chunk_content",
+            "type": "string",
+            "optional": true,
+            "description": "Discord username who generated the image"
+          },
+          {
+            "name": "creation_time", 
+            "source": "Creation_Time_chunk",
+            "method": "direct_chunk_content",
+            "type": "string",
+            "optional": true,
+            "description": "When the image was generated"
+          },
+          {
+            "name": "xmp_guid",
+            "source": "XMP_metadata",
+            "pattern": "iptcExt:DigImageGUID=\\\"([\\w-]+)\\\"",
+            "type": "string",
+            "optional": true,
+            "description": "XMP digital image GUID"
+          }
+        ]
+      },
+      
+      "model_mapping": {
+        "comment": "Map version flags to actual model names",
+        "version_to_model": {
+          "5": "Midjourney v5.0",
+          "5.1": "Midjourney v5.1", 
+          "5.2": "Midjourney v5.2",
+          "6": "Midjourney v6.0",
+          "6.1": "Midjourney v6.1",
+          "7": "Midjourney v7.0"
+        },
+        "niji_to_model": {
+          "5": "Niji v5 (Anime)",
+          "6": "Niji v6 (Anime)"
+        }
+      }
+    },
+    
+    "output_format": {
+      "tool": "Midjourney",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "midjourney_discord_bot",
+      "generation_platform": "discord_slash_command",
+      
+      "prompt": "{positive_prompt}",
+      "negative_prompt": "",
+      
+      "parameters": {
+        "model": "{version_mapped_to_model_name}",
+        "width": "{calculated_from_aspect_ratio_and_image_dimensions}",
+        "height": "{calculated_from_aspect_ratio_and_image_dimensions}",
+        "seed": "{seed}"
+      },
+      
+      "midjourney_specific": {
+        "aspect_ratio": "{aspect_ratio}",
+        "version": "{version}",
+        "niji_version": "{niji_version}",
+        "stylize": "{stylize}",
+        "chaos": "{chaos}",
+        "weird": "{weird}",
+        "quality": "{quality}",
+        "job_id": "{job_id}",
+        "discord_author": "{author}",
+        "creation_time": "{creation_time}",
+        "supports_negative_prompts": false,
+        "command_style": "discord_bot_flags"
+      },
+      
+      "raw_command_data": {
+        "original_description": "{description_chunk_content}",
+        "author_chunk": "{author_chunk_content}",
+        "creation_time_chunk": "{creation_time_chunk_content}",
+        "xmp_metadata": "{xmp_content}"
+      }
+    }
+  },
+
+  "implementation_notes": {
+    "parsing_strategy": [
+      "Split Description chunk into prompt + flags",
+      "Use regex to extract each --flag value",
+      "Map version numbers to model names",
+      "Calculate dimensions from aspect ratio if needed"
+    ],
+    
+    "version_detection": [
+      "Look for --v flag for main Midjourney versions",
+      "Look for --niji flag for anime model versions", 
+      "Default to latest if no version specified"
+    ],
+    
+    "aspect_ratio_handling": [
+      "Parse ratios like 16:9, 2:3, 1:1",
+      "Can calculate likely dimensions based on common sizes",
+      "Actual dimensions come from image file itself"
+    ],
+    
+    "discord_integration": [
+      "Job ID links back to Discord bot generation",
+      "Author field contains Discord username",
+      "Creation Time shows when generated"
+    ]
+  },
+
+  "midjourney_evolution": {
+    "v5_era": {
+      "features": ["Basic --ar, --v flags", "Stylize parameter", "Quality settings"],
+      "focus": "Photorealistic and artistic styles"
+    },
+    
+    "v6_era": {
+      "features": ["Improved consistency", "--weird parameter", "Better text rendering"],
+      "focus": "Enhanced control and quality"
+    },
+    
+    "v7_era": {
+      "features": ["Latest model", "Improved everything"],
+      "status": "Current flagship model"
+    },
+    
+    "niji_series": {
+      "focus": "Anime and manga styles",
+      "versions": ["Niji 5", "Niji 6"],
+      "specialty": "Japanese art styles"
+    }
+  },
+
+  "why_standalone_parser": [
+    "Major platform with millions of users",
+    "Unique Discord bot command-line approach", 
+    "Platform-specific parameters (chaos, weird, stylize)",
+    "Active development with frequent version updates",
+    "Different philosophy from other AI platforms",
+    "Your data shows MJ6/Niji6 usage - proves it's relevant",
+    "Deserves focused support, not generic treatment"
+  ]
+}

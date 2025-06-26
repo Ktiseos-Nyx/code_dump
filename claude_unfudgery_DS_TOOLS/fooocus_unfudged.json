@@ -1,0 +1,353 @@
+{
+  "fooocus_parser": {
+    "parser_name": "Fooocus (Unfudged)",
+    "priority": 100,
+    "description": "Fooocus - AI art generation made simple with user-friendly abstractions",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "platform_info": {
+      "description": "Fooocus focuses on simplicity - AI art generation without complexity",
+      "philosophy": "Make AI art accessible to everyone, not just technical users",
+      "approach": "Abstract technical parameters into user-friendly presets",
+      "target_audience": "Artists who want results without learning technical details"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Fooocus uses clean JSON with specific field naming conventions",
+        "method": "detect_fooocus_json_structure",
+        
+        "required_json_source": {
+          "sources": ["Comment_png_chunk", "parameters_png_chunk"],
+          "format": "clean_json_object",
+          "required": true
+        },
+        
+        "fooocus_signature_fields": [
+          "prompt", "seed", "sampler_name", "steps", 
+          "guidance_scale", "width", "height", "base_model_name"
+        ],
+        
+        "fooocus_specific_indicators": [
+          {
+            "field": "guidance_scale",
+            "instead_of": "cfg_scale",
+            "confidence": "high",
+            "comment": "Fooocus uses more intuitive naming"
+          },
+          {
+            "field": "base_model_name",
+            "instead_of": "model",
+            "confidence": "medium",
+            "comment": "Descriptive field naming"
+          },
+          {
+            "field": "performance_selection",
+            "confidence": "very_high",
+            "comment": "Fooocus-specific preset system"
+          },
+          {
+            "field": "aspect_ratios_selection",
+            "confidence": "high",
+            "comment": "User-friendly aspect ratio presets"
+          }
+        ],
+        
+        "exclusions": [
+          {
+            "field": "software",
+            "value": "RuinedFooocus",
+            "comment": "Not the chaotic fork version"
+          }
+        ],
+        
+        "detection_logic": "clean_json_with_fooocus_field_naming_conventions"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Fooocus stores clean, well-structured JSON metadata",
+        "sources": ["Comment PNG chunk", "parameters PNG chunk"],
+        "format": "straightforward_json_object",
+        "philosophy": "simple_clean_data_structure"
+      },
+      
+      "extraction_method": "direct_json_field_extraction",
+      
+      "core_generation_fields": [
+        {
+          "name": "prompt",
+          "source": "json.prompt",
+          "type": "string",
+          "required": true,
+          "description": "User's text prompt"
+        },
+        {
+          "name": "negative_prompt",
+          "source": "json.negative_prompt", 
+          "type": "string",
+          "fallback": "",
+          "description": "What to avoid in the image"
+        },
+        {
+          "name": "seed",
+          "source": "json.seed",
+          "type": "integer",
+          "description": "Random seed for reproducibility"
+        },
+        {
+          "name": "steps",
+          "source": "json.steps",
+          "type": "integer",
+          "description": "Number of generation steps"
+        },
+        {
+          "name": "guidance_scale",
+          "source": "json.guidance_scale",
+          "type": "float",
+          "description": "How closely to follow prompt (CFG scale with friendly name)"
+        },
+        {
+          "name": "sampler_name",
+          "source": "json.sampler_name",
+          "type": "string",
+          "description": "Sampling algorithm"
+        },
+        {
+          "name": "scheduler",
+          "source": "json.scheduler",
+          "type": "string",
+          "optional": true,
+          "description": "Scheduling algorithm"
+        }
+      ],
+      
+      "image_parameters": [
+        {
+          "name": "width",
+          "source": "json.width",
+          "type": "integer",
+          "description": "Image width in pixels"
+        },
+        {
+          "name": "height", 
+          "source": "json.height",
+          "type": "integer",
+          "description": "Image height in pixels"
+        }
+      ],
+      
+      "model_information": [
+        {
+          "name": "base_model_name",
+          "source": "json.base_model_name",
+          "type": "string",
+          "optional": true,
+          "description": "Base AI model used"
+        },
+        {
+          "name": "base_model_hash",
+          "source": "json.base_model_hash",
+          "type": "string",
+          "optional": true,
+          "description": "Model hash for verification"
+        },
+        {
+          "name": "loras_string",
+          "source": "json.loras",
+          "type": "string",
+          "optional": true,
+          "description": "LoRA models as A1111-style string",
+          "processing": "parse_to_lora_array"
+        }
+      ],
+      
+      "fooocus_user_friendly_features": [
+        {
+          "name": "performance_selection",
+          "source": "json.performance_selection",
+          "type": "string",
+          "optional": true,
+          "description": "User-friendly performance presets",
+          "common_values": ["Speed", "Quality", "Extreme Speed"],
+          "comment": "Abstracts complex technical settings"
+        },
+        {
+          "name": "aspect_ratios_selection",
+          "source": "json.aspect_ratios_selection",
+          "type": "string",
+          "optional": true,
+          "description": "Predefined aspect ratio presets",
+          "common_values": ["1152×896", "896×1152", "1344×768"],
+          "comment": "User picks ratio, not manual width/height"
+        },
+        {
+          "name": "image_number",
+          "source": "json.image_number",
+          "type": "integer",
+          "optional": true,
+          "description": "Which image in batch generation"
+        },
+        {
+          "name": "negative_prompt_weights",
+          "source": "json.negative_prompt_weights",
+          "type": "string",
+          "optional": true,
+          "description": "Advanced negative prompt weighting"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Fooocus",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "fooocus_simplified_generation",
+      "user_experience": "simplified_but_powerful",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{guidance_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "scheduler": "{scheduler}",
+        "model": "{base_model_name}",
+        "model_hash": "{base_model_hash}",
+        "width": "{width}",
+        "height": "{height}",
+        "loras": "{parsed_lora_array}"
+      },
+      
+      "fooocus_specific": {
+        "performance_preset": "{performance_selection}",
+        "aspect_ratio_preset": "{aspect_ratios_selection}",
+        "image_number": "{image_number}",
+        "negative_prompt_weights": "{negative_prompt_weights}",
+        "loras_raw_string": "{loras_string}",
+        "user_friendly_interface": true,
+        "complexity_abstraction": "preset_based"
+      },
+      
+      "raw_metadata": "{original_json}"
+    }
+  },
+
+  "fooocus_philosophy_explained": {
+    "the_problem_fooocus_solves": [
+      "ComfyUI: Too complex for casual users",
+      "A1111: Still requires technical knowledge", 
+      "Midjourney: Great but limited control",
+      "Most platforms: Overwhelming parameter counts"
+    ],
+    
+    "fooocus_solution": [
+      "Hide complexity behind presets",
+      "Intuitive naming (guidance_scale vs cfg_scale)",
+      "Preset-based workflows (performance, aspect ratios)",
+      "Clean, simple interface",
+      "Just enough control without overwhelming users"
+    ],
+    
+    "target_users": [
+      "Artists who want AI tools, not AI engineering",
+      "Beginners who find other platforms intimidating",
+      "Professionals who want quick results",
+      "Anyone who prefers 'it just works' philosophy"
+    ]
+  },
+
+  "fooocus_vs_other_platforms": {
+    "naming_conventions": {
+      "fooocus": "guidance_scale, base_model_name, performance_selection",
+      "technical_platforms": "cfg_scale, model, sampler_advanced_settings",
+      "philosophy": "Human language vs technical jargon"
+    },
+    
+    "complexity_handling": {
+      "comfyui": "Show all 200 nodes to user",
+      "a1111": "Show all parameters with defaults",
+      "fooocus": "Hide complexity, show presets",
+      "result": "Fooocus is most beginner-friendly"
+    },
+    
+    "preset_system": {
+      "performance_selection": "Speed/Quality/Extreme - user picks goal, not technical details",
+      "aspect_ratios_selection": "Common ratios as presets, not manual math",
+      "approach": "Opinionated defaults with easy overrides"
+    }
+  },
+
+  "fooocus_metadata_design": {
+    "clean_json_structure": [
+      "No nested complexity like other platforms",
+      "Intuitive field names",
+      "Optional fields for advanced users",
+      "Clear separation of core vs advanced parameters"
+    ],
+    
+    "user_friendly_naming": [
+      "guidance_scale (not cfg_scale)",
+      "base_model_name (not model)",
+      "performance_selection (not technical params)",
+      "Makes metadata readable by non-technical users"
+    ],
+    
+    "preset_integration": [
+      "Stores both preset choice AND technical values",
+      "Users see presets, metadata preserves technical details",
+      "Best of both worlds: simplicity + completeness"
+    ]
+  },
+
+  "why_fooocus_is_brilliant": [
+    "Solves the 'AI art is too technical' problem",
+    "Maintains power-user capabilities under the hood",
+    "Clean metadata that's both simple and complete",
+    "Proves you can be powerful without being overwhelming",
+    "Makes AI art accessible to actual artists, not just engineers"
+  ],
+
+  "implementation_notes": {
+    "json_extraction": [
+      "Standard JSON parsing from PNG chunks",
+      "Clean field names make extraction straightforward",
+      "No complex transformations needed",
+      "Optional fields handle gracefully"
+    ],
+    
+    "preset_handling": [
+      "Store preset selections for user understanding",
+      "Also extract technical values for completeness",
+      "Map friendly names to standard parameter names"
+    ],
+    
+    "lora_processing": [
+      "LoRAs stored as A1111-style strings",
+      "Parse to array for compatibility",
+      "Maintain both raw and parsed formats"
+    ]
+  },
+
+  "gemini_overcomplicated": [
+    "Original: Complex JSON path queries for simple field access",
+    "Unfudged: Direct field extraction - it's just clean JSON!",
+    "Original: Variable transformations for straightforward data",
+    "Unfudged: Read the fields as they are",
+    "Original: Conditional logic for simple optional fields",
+    "Unfudged: Optional fields are just optional"
+  ],
+
+  "notes": [
+    "Fooocus: AI art generation for humans, not engineers",
+    "Clean JSON: No nested complexity or text parsing nightmares", 
+    "Preset system: Hide complexity, maintain power",
+    "Intuitive naming: guidance_scale vs cfg_scale",
+    "Perfect example: You can be simple AND powerful"
+  ]
+}

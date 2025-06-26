@@ -1,0 +1,509 @@
+{
+  "invokeai_parser_system": {
+    "description": "InvokeAI went through THREE different metadata format phases",
+    "platform": "InvokeAI - Local Stable Diffusion web interface",
+    "format_evolution": "Dream → sd-metadata → invokeai_metadata",
+    "approach": "Three focused parsers for three different eras",
+    "note": "This is what happens when a platform keeps 'improving' their metadata format"
+  },
+
+  "invokeai_dream_parser": {
+    "parser_name": "InvokeAI Dream Format (Unfudged)",
+    "priority": 116,
+    "description": "InvokeAI's original command-line style format",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    "era": "early_invokeai",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Dream format uses command-line style in 'Dream' PNG chunk",
+        "method": "detect_invokeai_dream_format",
+        
+        "required_structure": [
+          {
+            "field": "Dream",
+            "source": "png_chunk",
+            "exists": true,
+            "required": true
+          }
+        ],
+        
+        "format_signatures": [
+          {
+            "pattern": "^\\s*\\\".*?\\\"",
+            "description": "Starts with quoted prompt",
+            "confidence": "high"
+          },
+          {
+            "pattern": "-[sSCAWH]\\s+",
+            "description": "Has command-line flags (-s, -S, -C, -A, -W, -H)",
+            "confidence": "very_high"
+          }
+        ],
+        
+        "detection_logic": "dream_chunk_with_quoted_prompt_and_flags"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Everything stored in Dream chunk as command-line format",
+        "source": "Dream PNG chunk",
+        "format": "quoted_prompt_plus_command_flags",
+        "example": "\"beautiful sunset\" -s 20 -S 12345 -C 7.5 -A euler -W 512 -H 512"
+      },
+      
+      "extraction_method": "command_line_parsing",
+      
+      "prompt_extraction": {
+        "full_prompt": {
+          "method": "extract_quoted_text",
+          "pattern": "^\\s*\\\"(.*?)\\\"",
+          "description": "Extract text within quotes"
+        },
+        
+        "positive_prompt": {
+          "method": "split_invokeai_prompt_positive",
+          "source": "full_prompt_text",
+          "description": "InvokeAI uses [negative prompt] syntax within quotes"
+        },
+        
+        "negative_prompt": {
+          "method": "split_invokeai_prompt_negative", 
+          "source": "full_prompt_text",
+          "pattern": "\\[([^\\]]+)\\]",
+          "description": "Extract text within [brackets] as negative"
+        }
+      },
+      
+      "parameter_extraction": {
+        "dream_flags": [
+          {
+            "name": "steps",
+            "flag": "-s",
+            "pattern": "-s\\s+([\\d]+)",
+            "type": "integer",
+            "description": "Number of inference steps"
+          },
+          {
+            "name": "seed",
+            "flag": "-S", 
+            "pattern": "-S\\s+([\\d]+)",
+            "type": "integer",
+            "description": "Random seed"
+          },
+          {
+            "name": "cfg_scale",
+            "flag": "-C",
+            "pattern": "-C\\s+([\\d.]+)",
+            "type": "float",
+            "description": "CFG scale"
+          },
+          {
+            "name": "sampler_name",
+            "flag": "-A",
+            "pattern": "-A\\s+([^\\s]+)",
+            "type": "string",
+            "description": "Sampler algorithm"
+          },
+          {
+            "name": "width",
+            "flag": "-W",
+            "pattern": "-W\\s+([\\d]+)",
+            "type": "integer",
+            "description": "Image width",
+            "optional": true
+          },
+          {
+            "name": "height", 
+            "flag": "-H",
+            "pattern": "-H\\s+([\\d]+)",
+            "type": "integer",
+            "description": "Image height",
+            "optional": true
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "InvokeAI (Dream Format)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "invokeai_dream_command_line",
+      "format_era": "early_invokeai",
+      
+      "prompt": "{positive_prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "seed": "{seed}",
+        "cfg_scale": "{cfg_scale}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "raw_command": "{original_dream_chunk}"
+    }
+  },
+
+  "invokeai_sd_metadata_parser": {
+    "parser_name": "InvokeAI SD-Metadata Format (Unfudged)",
+    "priority": 117,
+    "description": "InvokeAI's middle era with nested JSON format",
+    "version": "1.0",
+    "maintainer": "unfudging_team", 
+    "era": "middle_invokeai",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "SD-metadata format uses nested JSON structure",
+        "method": "detect_invokeai_sd_metadata",
+        
+        "required_structure": [
+          {
+            "field": "sd-metadata",
+            "source": "png_chunk",
+            "format": "json",
+            "required": true
+          },
+          {
+            "field": "image.prompt",
+            "source": "sd_metadata_json",
+            "exists": true,
+            "comment": "Can be string or array of objects"
+          }
+        ],
+        
+        "detection_logic": "sd_metadata_chunk_with_image_prompt_field"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Nested JSON in sd-metadata chunk",
+        "source": "sd-metadata PNG chunk",
+        "format": "nested_json_structure",
+        "structure": {
+          "image": {
+            "prompt": "string_or_array_of_objects",
+            "seed": "integer",
+            "steps": "integer"
+          },
+          "model_weights": "string"
+        }
+      },
+      
+      "extraction_method": "nested_json_extraction",
+      
+      "prompt_extraction": {
+        "complex_prompt_handling": {
+          "comment": "image.prompt can be multiple formats",
+          "formats": [
+            "simple_string",
+            "array_with_prompt_field: [{prompt: 'text'}]",
+            "array_with_text_field: [{text: 'text'}]"
+          ],
+          "extraction_priority": [
+            "image.prompt[0].prompt",
+            "image.prompt[0].text", 
+            "image.prompt"
+          ]
+        },
+        
+        "prompt_processing": {
+          "method": "extract_and_split_invokeai_style",
+          "description": "Still uses [negative] syntax within prompt"
+        }
+      },
+      
+      "parameter_extraction": {
+        "core_params": [
+          {
+            "name": "model",
+            "path": "model_weights", 
+            "type": "string",
+            "description": "Model name from root level"
+          },
+          {
+            "name": "sampler_name",
+            "path": "image.sampler",
+            "type": "string"
+          },
+          {
+            "name": "seed",
+            "path": "image.seed",
+            "type": "integer"
+          },
+          {
+            "name": "cfg_scale",
+            "path": "image.cfg_scale",
+            "type": "float"
+          },
+          {
+            "name": "steps",
+            "path": "image.steps", 
+            "type": "integer"
+          },
+          {
+            "name": "dimensions",
+            "paths": ["image.width", "image.height"],
+            "type": "integers"
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "InvokeAI (SD-Metadata Format)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "invokeai_sd_metadata_nested_json",
+      "format_era": "middle_invokeai",
+      
+      "prompt": "{positive_prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "model": "{model}",
+        "sampler_name": "{sampler_name}",
+        "seed": "{seed}",
+        "cfg_scale": "{cfg_scale}",
+        "steps": "{steps}",
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "raw_metadata": "{original_sd_metadata_json}"
+    }
+  },
+
+  "invokeai_metadata_parser": {
+    "parser_name": "InvokeAI Metadata Format (Unfudged)",
+    "priority": 118,
+    "description": "InvokeAI's modern clean JSON format",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    "era": "modern_invokeai",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Modern InvokeAI with clean JSON structure",
+        "method": "detect_invokeai_clean_metadata",
+        
+        "required_structure": [
+          {
+            "field": "invokeai_metadata",
+            "source": "png_chunk",
+            "format": "json",
+            "required": true
+          },
+          {
+            "fields": ["positive_prompt", "seed", "steps", "cfg_scale"],
+            "source": "invokeai_metadata_json",
+            "comment": "Has clean field names"
+          }
+        ],
+        
+        "detection_logic": "invokeai_metadata_chunk_with_clean_fields"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Finally! Clean, flat JSON structure",
+        "source": "invokeai_metadata PNG chunk",
+        "format": "clean_json_structure",
+        "philosophy": "InvokeAI learned from their mistakes"
+      },
+      
+      "extraction_method": "direct_json_field_extraction",
+      
+      "prompt_extraction": {
+        "positive_prompt": {
+          "field": "positive_prompt",
+          "type": "string",
+          "description": "Clean positive prompt field"
+        },
+        
+        "negative_prompt": {
+          "field": "negative_prompt",
+          "type": "string",
+          "fallback": "",
+          "description": "Separate negative prompt field"
+        },
+        
+        "style_prompts": {
+          "positive_style": {
+            "field": "positive_style_prompt",
+            "type": "string",
+            "optional": true,
+            "description": "SDXL style prompt"
+          },
+          "negative_style": {
+            "field": "negative_style_prompt", 
+            "type": "string",
+            "optional": true,
+            "description": "SDXL negative style prompt"
+          }
+        }
+      },
+      
+      "parameter_extraction": {
+        "core_params": [
+          {
+            "name": "seed",
+            "field": "seed",
+            "type": "integer"
+          },
+          {
+            "name": "steps",
+            "field": "steps",
+            "type": "integer"
+          },
+          {
+            "name": "cfg_scale",
+            "field": "cfg_scale",
+            "type": "float"
+          },
+          {
+            "name": "scheduler",
+            "field": "scheduler",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "dimensions",
+            "fields": ["width", "height"],
+            "type": "integers",
+            "optional": true
+          }
+        ],
+        
+        "model_info": [
+          {
+            "name": "model_name",
+            "field": "model.model_name",
+            "type": "string",
+            "description": "Nested model object"
+          },
+          {
+            "name": "model_hash",
+            "field": "model.hash",
+            "type": "string",
+            "optional": true
+          }
+        ],
+        
+        "advanced_features": [
+          {
+            "name": "refiner_steps",
+            "field": "refiner_steps",
+            "type": "integer",
+            "optional": true,
+            "description": "SDXL refiner steps"
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "InvokeAI (Modern Format)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "invokeai_clean_metadata",
+      "format_era": "modern_invokeai",
+      
+      "prompt": "{positive_prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "seed": "{seed}",
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "scheduler": "{scheduler}",
+        "model": "{model_name}",
+        "model_hash": "{model_hash}",
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "invokeai_specific": {
+        "positive_style_prompt": "{positive_style_prompt}",
+        "negative_style_prompt": "{negative_style_prompt}",
+        "is_sdxl": "{has_style_prompts}",
+        "refiner_steps": "{refiner_steps}",
+        "format_generation": "modern_clean_json"
+      },
+      
+      "raw_metadata": "{original_invokeai_metadata_json}"
+    }
+  },
+
+  "invokeai_evolution_story": {
+    "dream_era": {
+      "period": "Early InvokeAI",
+      "philosophy": "Copy command-line tools like ldm",
+      "format": "\"prompt\" -s 20 -S 12345 -C 7.5",
+      "pros": ["Human readable", "Familiar to CLI users"],
+      "cons": ["Hard to parse", "Limited structure", "Regex nightmare"]
+    },
+    
+    "sd_metadata_era": {
+      "period": "Middle InvokeAI",
+      "philosophy": "Let's use JSON but make it nested",
+      "format": "{image: {prompt: [...], seed: 123}}",
+      "pros": ["Structured data", "Extensible"],
+      "cons": ["Overly nested", "Complex prompt handling", "Still confusing"]
+    },
+    
+    "invokeai_metadata_era": {
+      "period": "Modern InvokeAI",
+      "philosophy": "KISS - Keep It Simple, Stupid",
+      "format": "{positive_prompt: \"...\", negative_prompt: \"...\", seed: 123}",
+      "pros": ["Clean structure", "Easy parsing", "Logical field names"],
+      "cons": ["None really - they finally got it right!"]
+    }
+  },
+
+  "implementation_notes": {
+    "parser_priorities": [
+      "Modern format (118) gets highest priority",
+      "SD-metadata (117) comes next",
+      "Dream format (116) is fallback for old images"
+    ],
+    
+    "detection_strategy": [
+      "Each format has unique chunk name",
+      "No overlap - clean detection",
+      "Priority ensures modern format wins if multiple exist"
+    ],
+    
+    "prompt_handling": [
+      "Dream & SD-metadata: Use [negative] syntax within prompt",
+      "Modern: Separate positive_prompt and negative_prompt fields",
+      "All three need InvokeAI-specific prompt splitting logic"
+    ],
+    
+    "gemini_overcomplicated": [
+      "Original parsers had insane regex orchestration",
+      "Complex variable key transformations for simple field access",
+      "JSON path coalescing when direct field access would work",
+      "Reality: Just three simple parsers with focused extraction"
+    ]
+  },
+
+  "why_three_parsers": [
+    "InvokeAI changed formats three times - each needs different handling",
+    "Better than one mega-parser with complex conditional logic",
+    "Each parser can be optimized for its specific format",
+    "Clear evolution story shows platform maturity",
+    "Your users might have images from any era"
+  ]
+}

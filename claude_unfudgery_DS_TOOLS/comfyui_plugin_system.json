@@ -1,0 +1,216 @@
+{
+  "parser_system_config": {
+    "version": "2.0",
+    "description": "Plugin-able ComfyUI parser system - drop in JSON files to add new workflow support",
+    "architecture": "detection_router + focused_parsers",
+    "plugin_directory": "./parsers/comfyui/",
+    "fallback_behavior": "extract_basic_metadata"
+  },
+
+  "parser_router": {
+    "name": "ComfyUI Router", 
+    "priority": 1,
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Is this a ComfyUI image at all?",
+        "condition": "OR",
+        "rules": [
+          {
+            "source_type": "pil_info_key_exists",
+            "source_key": "workflow"
+          },
+          {
+            "source_type": "pil_info_key_exists", 
+            "source_key": "prompt"
+          }
+        ]
+      }
+    ],
+    
+    "routing_logic": {
+      "method": "priority_cascade",
+      "description": "Try parsers in priority order, use first successful match",
+      "load_parsers_from": "./parsers/comfyui/",
+      "parser_file_pattern": "*.json",
+      "fallback_parser": "comfyui_basic_fallback"
+    }
+  },
+
+  "example_parsers": {
+    "basic_ksampler": {
+      "file": "comfyui_basic.json",
+      "description": "Handles standard KSampler workflows - covers 80% of cases",
+      "priority": 100,
+      "maintainer": "core_team"
+    },
+    
+    "a1111_style": {
+      "file": "comfyui_a1111.json", 
+      "description": "Handles KSampler_A1111 node workflows",
+      "priority": 110,
+      "maintainer": "core_team"
+    },
+    
+    "flux_gguf": {
+      "file": "comfyui_flux.json",
+      "description": "Handles Flux/GGUF model workflows with advanced samplers", 
+      "priority": 120,
+      "maintainer": "core_team"
+    },
+    
+    "custom_chaos_workflow": {
+      "file": "comfyui_chaos_goblin.json",
+      "description": "Handles workflows with 47 custom nodes and recursive loops",
+      "priority": 200,
+      "maintainer": "your_dev_buddy",
+      "status": "experimental"
+    }
+  },
+
+  "plugin_api": {
+    "required_fields": [
+      "parser_name",
+      "priority", 
+      "target_file_types",
+      "detection_rules",
+      "parsing_instructions"
+    ],
+    
+    "optional_fields": [
+      "description",
+      "maintainer", 
+      "version",
+      "status",
+      "dependencies",
+      "notes"
+    ],
+    
+    "detection_rule_types": [
+      "node_type_exists",
+      "node_input_value_match",
+      "workflow_pattern_match", 
+      "custom_detection_function"
+    ],
+    
+    "parsing_methods": [
+      "simple_node_lookup",
+      "connection_traversal", 
+      "pattern_matching",
+      "custom_extraction_function"
+    ]
+  },
+
+  "standard_output_format": {
+    "metadata": {
+      "parser_name": "string",
+      "parser_version": "string", 
+      "tool": "ComfyUI",
+      "workflow_type": "string",
+      "confidence": "float (0-1)",
+      "extraction_timestamp": "iso_datetime"
+    },
+    
+    "content": {
+      "prompt": "string",
+      "negative_prompt": "string", 
+      "parameters": {
+        "core": {
+          "steps": "integer",
+          "cfg_scale": "float",
+          "seed": "integer", 
+          "sampler_name": "string",
+          "scheduler": "string",
+          "model": "string",
+          "width": "integer",
+          "height": "integer"
+        },
+        "advanced": {
+          "loras": "array",
+          "vae_model": "string",
+          "clip_skip": "integer"
+        },
+        "tool_specific": {
+          "comment": "Parser-specific fields go here",
+          "example": "custom_sampler_settings"
+        }
+      }
+    },
+    
+    "raw_data": {
+      "workflow": "original_workflow_json",
+      "prompt_data": "original_prompt_json" 
+    }
+  },
+
+  "example_simple_parser": {
+    "parser_name": "ComfyUI Basic KSampler",
+    "priority": 100,
+    "description": "Handles 80% of standard ComfyUI workflows",
+    "version": "1.0",
+    "maintainer": "core_team",
+    
+    "detection_rules": [
+      {
+        "type": "node_type_exists",
+        "node_class": "KSampler",
+        "required": true
+      },
+      {
+        "type": "node_type_exists", 
+        "node_class": "CLIPTextEncode",
+        "required": true
+      }
+    ],
+    
+    "extraction_rules": [
+      {
+        "field": "prompt",
+        "method": "find_connected_text",
+        "from_node": "KSampler",
+        "input_slot": "positive",
+        "target_node": "CLIPTextEncode", 
+        "extract_field": "text"
+      },
+      {
+        "field": "steps",
+        "method": "simple_lookup",
+        "node_type": "KSampler",
+        "field": "steps",
+        "data_type": "integer",
+        "default": 20
+      }
+    ],
+    
+    "notes": [
+      "This is a simple example - real parsers can be much more complex",
+      "See other parser files for advanced examples"
+    ]
+  },
+
+  "developer_guide": {
+    "adding_new_parser": [
+      "1. Create new JSON file in ./parsers/comfyui/",
+      "2. Set unique priority (higher = checked first)", 
+      "3. Define detection rules to identify your workflow type",
+      "4. Define extraction rules to pull out the data",
+      "5. Test with real workflow files",
+      "6. Submit PR or drop in plugin directory"
+    ],
+    
+    "testing_parser": [
+      "1. Put test PNG files in ./test_images/",
+      "2. Run parser tester: python test_parser.py your_parser.json",
+      "3. Check output matches expected format",
+      "4. Test edge cases and error handling"
+    ],
+    
+    "priority_guidelines": {
+      "0-99": "Core system parsers",
+      "100-199": "Standard workflow types", 
+      "200-299": "Advanced/experimental parsers",
+      "300+": "User contributed parsers"
+    }
+  }
+}

@@ -1,0 +1,305 @@
+{
+  "ruinedfooocus_parser": {
+    "parser_name": "RuinedFooocus (Unfudged)",
+    "priority": 105,
+    "description": "RuinedFooocus - Fooocus fork with double JSON encoding madness",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP"],
+    
+    "platform_info": {
+      "description": "RuinedFooocus is a fork of Fooocus with 'enhanced' metadata storage",
+      "relationship": "Fork of Fooocus with different metadata approach",
+      "special_feature": "Double JSON encoding for reasons unknown",
+      "philosophy": "Why store JSON when you can store JSON inside JSON strings?"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "RuinedFooocus uses double JSON encoding - JSON containing JSON strings",
+        "method": "detect_double_json_encoding",
+        
+        "layer_1_detection": {
+          "field": "parameters",
+          "type": "json_object_with_string_value",
+          "required": true,
+          "comment": "Outer JSON must have 'parameters' key with string value"
+        },
+        
+        "layer_2_detection": {
+          "field": "parameters_string_content",
+          "type": "valid_json",
+          "required": true,
+          "comment": "The 'parameters' string value must be valid JSON"
+        },
+        
+        "signature_detection": {
+          "field": "software",
+          "value": "RuinedFooocus",
+          "location": "inner_json",
+          "case_sensitive": false,
+          "comment": "Inner JSON must identify as RuinedFooocus"
+        },
+        
+        "detection_logic": "outer_json_with_inner_json_string_containing_ruinedfooocus_signature"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Handle the double JSON encoding nightmare",
+        "extraction_process": [
+          "1. Extract outer JSON from parameters/Comment/EXIF",
+          "2. Get 'parameters' field value (which is a JSON string)",
+          "3. Parse that JSON string to get actual metadata",
+          "4. Extract fields from the inner JSON"
+        ],
+        "data_flow": "metadata_source → outer_json → parameters_string → inner_json → actual_data"
+      },
+      
+      "extraction_method": "double_json_unwrapping",
+      
+      "step_1_outer_json": {
+        "sources": ["pil_info.parameters", "pil_info.Comment", "exif.usercomment"],
+        "expected_structure": "{\"parameters\": \"escaped_json_string\"}",
+        "extract": "parameters_field_as_string"
+      },
+      
+      "step_2_inner_json": {
+        "source": "parameters_string_from_step_1",
+        "method": "parse_json_string",
+        "expected_structure": "{\"software\": \"RuinedFooocus\", \"Prompt\": \"...\", ...}"
+      },
+      
+      "field_extraction": {
+        "prompt_fields": [
+          {
+            "name": "prompt",
+            "source": "inner_json",
+            "field": "Prompt",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "negative_prompt",
+            "source": "inner_json",
+            "field": "Negative",
+            "type": "string",
+            "fallback": ""
+          }
+        ],
+        
+        "generation_parameters": [
+          {
+            "name": "steps",
+            "source": "inner_json",
+            "field": "steps",
+            "type": "integer"
+          },
+          {
+            "name": "cfg_scale",
+            "source": "inner_json", 
+            "field": "cfg",
+            "type": "float"
+          },
+          {
+            "name": "seed",
+            "source": "inner_json",
+            "field": "seed",
+            "type": "integer"
+          },
+          {
+            "name": "sampler_name",
+            "source": "inner_json",
+            "field": "sampler_name",
+            "type": "string"
+          },
+          {
+            "name": "scheduler",
+            "source": "inner_json",
+            "field": "scheduler",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "dimensions",
+            "source": "inner_json",
+            "fields": ["width", "height"],
+            "type": "integers"
+          }
+        ],
+        
+        "model_info": [
+          {
+            "name": "model",
+            "source": "inner_json",
+            "field": "base_model_name",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "model_hash",
+            "source": "inner_json",
+            "field": "base_model_hash", 
+            "type": "string",
+            "optional": true
+          }
+        ],
+        
+        "ruinedfooocus_specific": [
+          {
+            "name": "denoise",
+            "source": "inner_json",
+            "field": "denoise",
+            "type": "float",
+            "optional": true
+          },
+          {
+            "name": "start_step",
+            "source": "inner_json",
+            "field": "start_step",
+            "type": "integer",
+            "optional": true,
+            "description": "RuinedFooocus start step parameter"
+          },
+          {
+            "name": "loras_string",
+            "source": "inner_json",
+            "field": "loras",
+            "type": "string",
+            "optional": true,
+            "description": "LoRA information as A1111-style string"
+          }
+        ]
+      },
+      
+      "lora_processing": {
+        "comment": "RuinedFooocus stores LoRAs as A1111-style strings that need parsing",
+        "input": "loras_string_from_inner_json",
+        "format": "a1111_style_lora_string",
+        "example": "<lora:model1:0.8><lora:model2:0.5>",
+        "output": "parsed_lora_array"
+      }
+    },
+    
+    "output_format": {
+      "tool": "RuinedFooocus",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "ruinedfooocus_double_json",
+      "encoding_method": "json_inside_json_strings",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "scheduler": "{scheduler}",
+        "model": "{model}",
+        "model_hash": "{model_hash}",
+        "width": "{width}",
+        "height": "{height}",
+        "denoise": "{denoise}",
+        "loras": "{parsed_lora_array}"
+      },
+      
+      "ruinedfooocus_specific": {
+        "start_step": "{start_step}",
+        "loras_raw_string": "{loras_string}",
+        "software_signature": "RuinedFooocus",
+        "encoding_layers": 2,
+        "data_storage_philosophy": "json_inception"
+      },
+      
+      "raw_data": {
+        "outer_json": "{outer_json_object}",
+        "inner_json_string": "{parameters_string}",
+        "inner_json_parsed": "{inner_json_object}"
+      }
+    }
+  },
+
+  "double_json_explanation": {
+    "what_is_happening": [
+      "Normal platforms: Store JSON directly in metadata",
+      "RuinedFooocus: Store JSON containing JSON strings containing actual data",
+      "It's like JSON inception - JSON within JSON within metadata"
+    ],
+    
+    "why_this_exists": {
+      "theory_1": "Intentional obfuscation to prevent scraping",
+      "theory_2": "Accident due to misunderstanding string escaping", 
+      "theory_3": "Deliberate chaos (it IS called RuinedFooocus)",
+      "theory_4": "Trying to be compatible with multiple metadata systems"
+    },
+    
+    "parsing_complexity": {
+      "normal_json": "1 parsing step",
+      "ruinedfooocus": "2 parsing steps + string unescaping",
+      "gemini_approach": "17 conditional transformation matrices",
+      "unfudged_approach": "Parse outer JSON, extract string, parse inner JSON"
+    }
+  },
+
+  "implementation_notes": {
+    "key_challenges": [
+      "Double JSON parsing with proper error handling",
+      "String escaping/unescaping between layers",
+      "Detecting vs other JSON-based formats",
+      "LoRA string parsing (A1111 format within RuinedFooocus)"
+    ],
+    
+    "parsing_strategy": [
+      "1. Try to parse as JSON - get outer layer",
+      "2. Extract 'parameters' field as string",
+      "3. Parse that string as JSON - get inner layer", 
+      "4. Check for 'software': 'RuinedFooocus' signature",
+      "5. Extract fields from inner JSON"
+    ],
+    
+    "error_handling": [
+      "Outer JSON parse fails: Not RuinedFooocus",
+      "Inner JSON parse fails: Corrupted metadata",
+      "Missing software signature: Wrong format",
+      "Missing required fields: Return partial data"
+    ]
+  },
+
+  "relationship_to_fooocus": {
+    "fooocus_original": {
+      "metadata_approach": "Simple, clean JSON storage",
+      "philosophy": "Make AI art generation simple"
+    },
+    
+    "ruinedfooocus_fork": {
+      "metadata_approach": "Double JSON encoding chaos",
+      "philosophy": "Take Fooocus and make it... interesting",
+      "additional_features": "start_step parameter, enhanced LoRA handling"
+    },
+    
+    "why_separate_parser": [
+      "Completely different metadata encoding",
+      "Additional RuinedFooocus-specific parameters",
+      "Double JSON requires special handling",
+      "Better than trying to detect encoding layers in main Fooocus parser"
+    ]
+  },
+
+  "gemini_overcomplicated": [
+    "Original used 'pil_info_key_or_exif_user_comment_json_path_string_json_path_value'",
+    "Created complex transformation pipelines for simple string parsing",
+    "Reality: Parse JSON, extract string, parse string as JSON, done",
+    "Gemini treats JSON-in-strings like rocket science"
+  ],
+
+  "notes": [
+    "RuinedFooocus: When you want Fooocus but with more chaos",
+    "Double JSON encoding: Either brilliant or terrible, hard to tell",
+    "LoRA handling: Uses A1111-style strings that need parsing",
+    "Name accuracy: It really does 'ruin' simple metadata storage",
+    "Your instinct to make a separate parser was correct!"
+  ]
+}

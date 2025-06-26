@@ -1,0 +1,281 @@
+{
+  "model_architecture_detection": {
+    "version": "1.0",
+    "description": "Basic detection of major Stable Diffusion model architectures",
+    "approach": "pattern_matching_plus_resolution_hints",
+    
+    "detection_rules": [
+      {
+        "architecture": "SDXL",
+        "priority": 1,
+        "patterns": [
+          "xl",
+          "sdxl", 
+          "turbo.*xl",
+          "lightning.*xl",
+          "pony.*xl",
+          "animagine.*xl"
+        ],
+        "resolution_indicators": [1024, 1152, 896, 832],
+        "parameter_hints": ["style_prompt", "refiner_model", "refiner_steps"],
+        "confidence_boost": ["1024x1024", "xl in name"]
+      },
+      
+      {
+        "architecture": "SD Cascade",
+        "priority": 2,
+        "patterns": [
+          "cascade",
+          "stable.*cascade",
+          "sd.*cascade"
+        ],
+        "resolution_indicators": [1024, 1536, 2048],
+        "parameter_hints": ["stage_a", "stage_b", "stage_c"],
+        "confidence_boost": ["cascade in name", "multi-stage parameters"]
+      },
+      
+      {
+        "architecture": "CogVideoX",
+        "priority": 3,
+        "patterns": [
+          "cogvideo",
+          "cog.*video",
+          "cogx",
+          "video.*cog"
+        ],
+        "resolution_indicators": [720, 1280, 480],
+        "parameter_hints": ["num_frames", "fps", "video_length"],
+        "confidence_boost": ["video parameters", "cogvideo in name"],
+        "media_type": "video"
+      },
+      
+      {
+        "architecture": "SD 2.1",
+        "priority": 4,
+        "patterns": [
+          "v2[._-]1",
+          "sd2[._-]1", 
+          "stable.*diffusion.*2[._-]1",
+          "2[._-]1.*768"
+        ],
+        "resolution_indicators": [768, 704],
+        "confidence_boost": ["768x768", "v2-1 in name"]
+      },
+      
+      {
+        "architecture": "SD 2.0",
+        "priority": 5,
+        "patterns": [
+          "v2[._-]0",
+          "sd2[._-]0",
+          "v2(?![._-]1)",
+          "stable.*diffusion.*2[._-]0"
+        ],
+        "resolution_indicators": [768, 704],
+        "confidence_boost": ["768x768", "v2 in name without 2.1"]
+      },
+      
+      {
+        "architecture": "SD Turbo",
+        "priority": 6,
+        "patterns": [
+          "turbo(?!.*xl)",
+          "lightning(?!.*xl)",
+          "lcm",
+          "adversarial.*diffusion"
+        ],
+        "step_indicators": [1, 2, 3, 4, 8],
+        "confidence_boost": ["very low steps", "turbo/lightning in name"]
+      },
+      
+      {
+        "architecture": "SD 1.5",
+        "priority": 10,
+        "patterns": [
+          "v1[._-]5",
+          "sd1[._-]5",
+          "dreamshaper",
+          "realistic.*vision",
+          "checkpoint",
+          "deliberate"
+        ],
+        "resolution_indicators": [512, 576, 448],
+        "confidence_boost": ["512x512", "classic model names"],
+        "fallback": true
+      }
+    ],
+    
+    "detection_algorithm": {
+      "step_1": "model_name_pattern_matching",
+      "step_2": "resolution_analysis", 
+      "step_3": "parameter_hints_check",
+      "step_4": "confidence_scoring",
+      "step_5": "fallback_to_sd15_if_uncertain"
+    },
+    
+    "confidence_levels": {
+      "definitive": 0.9,
+      "high": 0.7,
+      "medium": 0.5,
+      "low": 0.3,
+      "fallback": 0.1
+    }
+  },
+
+  "architecture_profiles": {
+    "SDXL": {
+      "full_name": "Stable Diffusion XL",
+      "native_resolution": "1024x1024",
+      "common_resolutions": ["1024x1024", "1152x896", "896x1152", "1344x768"],
+      "typical_steps": "20-40",
+      "features": ["dual_text_encoders", "refiner_support", "style_prompts"],
+      "year_introduced": 2023
+    },
+    
+    "SD Cascade": {
+      "full_name": "Stable Cascade",
+      "native_resolution": "1024x1024+",
+      "common_resolutions": ["1024x1024", "1536x1536", "2048x2048"],
+      "typical_steps": "10-20 per stage",
+      "features": ["multi_stage_generation", "higher_resolution", "improved_quality"],
+      "year_introduced": 2024
+    },
+    
+    "CogVideoX": {
+      "full_name": "CogVideoX",
+      "native_resolution": "720p/1080p",
+      "common_resolutions": ["1280x720", "1920x1080", "480x720"],
+      "typical_steps": "50+",
+      "features": ["video_generation", "temporal_consistency", "motion_control"],
+      "media_type": "video",
+      "year_introduced": 2024
+    },
+    
+    "SD 2.1": {
+      "full_name": "Stable Diffusion 2.1",
+      "native_resolution": "768x768",
+      "common_resolutions": ["768x768", "704x704", "512x768"],
+      "typical_steps": "20-50",
+      "features": ["openclip_encoder", "improved_text_understanding"],
+      "year_introduced": 2022
+    },
+    
+    "SD 2.0": {
+      "full_name": "Stable Diffusion 2.0", 
+      "native_resolution": "768x768",
+      "common_resolutions": ["768x768", "704x704"],
+      "typical_steps": "20-50",
+      "features": ["openclip_encoder"],
+      "year_introduced": 2022
+    },
+    
+    "SD Turbo": {
+      "full_name": "Stable Diffusion Turbo/Lightning",
+      "native_resolution": "512x512",
+      "common_resolutions": ["512x512", "768x768", "1024x1024"],
+      "typical_steps": "1-8",
+      "features": ["ultra_fast_generation", "adversarial_training", "few_step_sampling"],
+      "year_introduced": 2023
+    },
+    
+    "SD 1.5": {
+      "full_name": "Stable Diffusion 1.5",
+      "native_resolution": "512x512", 
+      "common_resolutions": ["512x512", "576x576", "448x448", "512x768"],
+      "typical_steps": "20-50",
+      "features": ["classic_diffusion", "wide_model_support", "extensive_ecosystem"],
+      "year_introduced": 2022,
+      "note": "Most common and well-supported architecture"
+    }
+  },
+
+  "detection_implementation": {
+    "pattern_matching": {
+      "method": "case_insensitive_regex",
+      "model_name_sources": ["parameters.model", "parameters.base_model_name", "model field"],
+      "scoring": "pattern_specificity_weighted"
+    },
+    
+    "resolution_analysis": {
+      "method": "native_resolution_proximity",
+      "weight": "medium_confidence_boost",
+      "logic": "closer_to_native_resolution_increases_confidence"
+    },
+    
+    "parameter_hints": {
+      "method": "architecture_specific_parameter_detection",
+      "weight": "high_confidence_boost",
+      "examples": {
+        "SDXL": "presence of style_prompt or refiner_model",
+        "Cascade": "presence of stage_a/stage_b parameters", 
+        "CogVideoX": "presence of num_frames or fps",
+        "Turbo": "steps < 8"
+      }
+    },
+    
+    "fallback_logic": {
+      "default": "SD 1.5",
+      "reason": "most_common_architecture_historically",
+      "confidence": "low"
+    }
+  },
+
+  "output_format": {
+    "basic_detection": {
+      "detected_architecture": "SDXL",
+      "confidence": "high",
+      "detection_method": "model_name_pattern + resolution_match"
+    },
+    
+    "enhanced_output": {
+      "detected_architecture": "SDXL",
+      "full_name": "Stable Diffusion XL", 
+      "confidence": "high",
+      "native_resolution": "1024x1024",
+      "detection_reasons": [
+        "Model name contains 'xl'",
+        "Resolution 1024x1024 matches SDXL native",
+        "Presence of style_prompt parameter"
+      ]
+    }
+  },
+
+  "integration_with_parsers": {
+    "approach": "post_processing_enhancement",
+    "timing": "after_standard_field_extraction",
+    "input": "extracted_metadata_object",
+    "output": "metadata_with_architecture_detection",
+    
+    "example_integration": {
+      "original_output": {
+        "tool": "Automatic1111",
+        "parameters": {
+          "model": "dreamshaper_xl_v2.safetensors",
+          "width": 1024,
+          "height": 1024
+        }
+      },
+      "enhanced_output": {
+        "tool": "Automatic1111", 
+        "parameters": {
+          "model": "dreamshaper_xl_v2.safetensors",
+          "width": 1024,
+          "height": 1024
+        },
+        "model_info": {
+          "detected_architecture": "SDXL",
+          "confidence": "high"
+        }
+      }
+    }
+  },
+
+  "notes": [
+    "Basic detection covers major architectures users encounter",
+    "Pattern matching handles most common model naming conventions",
+    "Resolution analysis provides supporting evidence",
+    "Parameter hints give high-confidence detection",
+    "SD 1.5 fallback ensures always-useful output",
+    "Can be enhanced later with more detailed analysis"
+  ]
+}

@@ -1,0 +1,546 @@
+{
+  "platform_overview": {
+    "description": "The 'other' AI platforms with unique metadata approaches",
+    "novelai": "Anime-focused AI with two different storage methods",
+    "midjourney": "Discord bot AI with command-line style metadata", 
+    "standard_images": "Fallback for regular images with basic PIL info"
+  },
+
+  "novelai_legacy_parser": {
+    "parser_name": "NovelAI Legacy (Unfudged)",
+    "priority": 128,
+    "description": "NovelAI's original metadata format using standard PNG chunks",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "NovelAI uses clean, standard PNG chunk approach",
+        "method": "detect_novelai_png_chunks",
+        
+        "required_indicators": [
+          {
+            "field": "Software", 
+            "value": "NovelAI",
+            "source": "exif_or_png_chunk",
+            "confidence": "very_high"
+          },
+          {
+            "field": "Description",
+            "exists": true,
+            "source": "png_chunk",
+            "comment": "Contains the positive prompt"
+          },
+          {
+            "field": "Comment",
+            "format": "json",
+            "source": "png_chunk", 
+            "comment": "Contains generation parameters"
+          }
+        ],
+        
+        "detection_logic": "requires_software_tag_plus_description_and_json_comment"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "NovelAI splits data across multiple PNG chunks",
+        "prompt_source": "Description chunk",
+        "parameters_source": "Comment chunk (as JSON)",
+        "format": "png_chunks_multi_source"
+      },
+      
+      "extraction_strategy": "novelai_png_chunk_parsing",
+      
+      "core_fields": [
+        {
+          "name": "prompt",
+          "method": "extract_from_png_chunk",
+          "chunk": "Description",
+          "type": "string",
+          "description": "Positive prompt stored in Description chunk"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment",
+          "field": "uc",
+          "type": "string",
+          "fallback": "",
+          "description": "Negative prompt in 'uc' field of Comment JSON"
+        },
+        {
+          "name": "seed",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment",
+          "field": "seed",
+          "type": "integer"
+        },
+        {
+          "name": "steps",
+          "method": "extract_from_json_chunk", 
+          "chunk": "Comment",
+          "field": "steps",
+          "type": "integer"
+        },
+        {
+          "name": "sampler_name",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment",
+          "field": "sampler",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dimensions",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment",
+          "fields": ["width", "height"],
+          "type": "integers",
+          "optional": true
+        }
+      ],
+      
+      "novelai_specific_fields": [
+        {
+          "name": "denoising_strength",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment", 
+          "field": "strength",
+          "type": "float",
+          "optional": true,
+          "description": "NovelAI's denoising strength parameter"
+        },
+        {
+          "name": "noise_offset",
+          "method": "extract_from_json_chunk",
+          "chunk": "Comment",
+          "field": "noise",
+          "type": "float",
+          "optional": true,
+          "description": "NovelAI's noise offset parameter"
+        },
+        {
+          "name": "source_info",
+          "method": "extract_from_png_chunk",
+          "chunk": "Source",
+          "type": "string",
+          "optional": true,
+          "description": "Source attribution if present"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "NovelAI (Legacy Format)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "novelai_png_chunks",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}",
+        "denoising_strength": "{denoising_strength}"
+      },
+      
+      "novelai_specific": {
+        "noise_offset": "{noise_offset}",
+        "source_info": "{source_info}",
+        "storage_method": "standard_png_chunks"
+      },
+      
+      "raw_chunks": {
+        "description": "{description_chunk}",
+        "comment_json": "{comment_json}"
+      }
+    }
+  },
+
+  "novelai_stealth_parser": {
+    "parser_name": "NovelAI Stealth LSB (Unfudged)",
+    "priority": 129,
+    "description": "NovelAI's stealth format using LSB pixel hiding - for the paranoid",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Stealth format hides data in least significant bits of pixels",
+        "method": "detect_lsb_steganography",
+        
+        "required_conditions": [
+          {
+            "format": "PNG with RGBA",
+            "requirement": "needs_alpha_channel_for_lsb"
+          },
+          {
+            "magic_bytes": "stealth_pngcomp",
+            "location": "lsb_of_pixels",
+            "comment": "NovelAI's LSB signature"
+          }
+        ],
+        
+        "detection_logic": "check_for_lsb_magic_bytes_in_rgba_png"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "Data is hidden in pixel LSBs - requires special extraction",
+        "method": "lsb_steganography_extraction",
+        "magic_signature": "stealth_pngcomp",
+        "format": "extracted_json_from_pixels"
+      },
+      
+      "extraction_strategy": "lsb_pixel_data_extraction",
+      "special_note": "This parser requires custom LSB extraction logic in the core engine"
+    },
+    
+    "output_format": {
+      "tool": "NovelAI (Stealth LSB Format)",
+      "parser_version": "unfudged_v1", 
+      "workflow_type": "novelai_stealth_lsb",
+      "extraction_method": "least_significant_bit_steganography",
+      "note": "Data hidden in pixel LSBs - requires special extraction code"
+    }
+  },
+
+  "midjourney_parser": {
+    "parser_name": "Midjourney (Unfudged)",
+    "priority": 130,
+    "description": "Midjourney Discord bot - stores prompts and parameters as command flags",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Midjourney stores everything in Description as command-line style",
+        "method": "detect_midjourney_command_format",
+        
+        "required_patterns": [
+          {
+            "field": "Description",
+            "exists": true,
+            "source": "png_chunk"
+          },
+          {
+            "field": "Description",
+            "contains_any": ["--ar", "--v", "--niji", "Job ID:", "--chaos", "--stylize", "--weird"],
+            "comment": "Midjourney command flags"
+          }
+        ],
+        
+        "optional_indicators": [
+          {
+            "field": "Author",
+            "exists": true,
+            "source": "png_chunk"
+          },
+          {
+            "field": "XMP",
+            "contains": "DigImageGUID",
+            "comment": "Discord metadata"
+          }
+        ],
+        
+        "exclusions": [
+          {
+            "field": "parameters",
+            "format": "not_fooocus_json",
+            "comment": "Distinguish from Fooocus which also uses Description"
+          }
+        ]
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "Everything is in Description chunk as Discord command format",
+        "primary": "Description PNG chunk",
+        "format": "command_line_style_with_flags",
+        "example": "a beautiful sunset --ar 16:9 --v 6 --stylize 100 Job ID: 12345"
+      },
+      
+      "extraction_strategy": "parse_discord_command_format",
+      
+      "core_fields": [
+        {
+          "name": "prompt",
+          "method": "extract_before_flags",
+          "description": "Everything before the first -- flag or Job ID:",
+          "cleanup": "trim_whitespace"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "static_value",
+          "value": "",
+          "comment": "Midjourney doesn't use negative prompts"
+        }
+      ],
+      
+      "midjourney_flags": [
+        {
+          "name": "aspect_ratio",
+          "flag": "--ar",
+          "pattern": "--ar\\s+([^\\s]+)",
+          "type": "string",
+          "description": "Aspect ratio like 16:9, 1:1, etc."
+        },
+        {
+          "name": "version",
+          "flag": "--v",
+          "pattern": "--v\\s+([^\\s]+)", 
+          "type": "string",
+          "description": "Midjourney model version"
+        },
+        {
+          "name": "niji_version",
+          "flag": "--niji",
+          "pattern": "--niji\\s+([^\\s]+)",
+          "type": "string",
+          "description": "Niji anime model version"
+        },
+        {
+          "name": "stylize",
+          "flag": "--stylize",
+          "pattern": "--stylize\\s+(\\d+)",
+          "type": "integer",
+          "description": "Stylization strength 0-1000"
+        },
+        {
+          "name": "chaos",
+          "flag": "--chaos", 
+          "pattern": "--chaos\\s+(\\d+)",
+          "type": "integer",
+          "description": "Chaos/variety level 0-100"
+        },
+        {
+          "name": "weird",
+          "flag": "--weird",
+          "pattern": "--weird\\s+(\\d+)",
+          "type": "integer", 
+          "description": "Weirdness factor 0-3000"
+        },
+        {
+          "name": "job_id",
+          "flag": "Job ID:",
+          "pattern": "Job ID:\\s*([\\w-]+)",
+          "type": "string",
+          "description": "Discord generation job identifier"
+        }
+      ],
+      
+      "metadata_fields": [
+        {
+          "name": "author",
+          "method": "extract_from_png_chunk",
+          "chunk": "Author",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "creation_time",
+          "method": "extract_from_png_chunk", 
+          "chunk": "Creation Time",
+          "type": "string",
+          "optional": true
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Midjourney",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "midjourney_discord_command",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "",
+      
+      "parameters": {
+        "model": "{version_to_model_name}",
+        "width": "{width_from_aspect_ratio_and_image}",
+        "height": "{height_from_aspect_ratio_and_image}"
+      },
+      
+      "midjourney_specific": {
+        "aspect_ratio": "{aspect_ratio}",
+        "version": "{version}",
+        "niji_version": "{niji_version}",
+        "stylize": "{stylize}",
+        "chaos": "{chaos}",
+        "weird": "{weird}",
+        "job_id": "{job_id}",
+        "author": "{author}",
+        "creation_time": "{creation_time}",
+        "generation_platform": "discord_bot"
+      },
+      
+      "raw_command": "{original_description_chunk}"
+    }
+  },
+
+  "standard_image_parser": {
+    "parser_name": "Standard Image Info (Unfudged)",
+    "priority": 15,
+    "description": "Fallback parser for regular images - extracts basic PIL metadata",
+    "version": "1.0", 
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP", "TIFF", "GIF", "BMP"],
+    
+    "detection_rules": [
+      {
+        "comment": "Any image with basic PIL info but no AI generation metadata",
+        "method": "detect_standard_image",
+        
+        "required_conditions": [
+          {
+            "field": "pil_info",
+            "exists": true,
+            "type": "dictionary"
+          },
+          {
+            "field": "pil_info",
+            "has_any": ["Software", "dpi", "icc_profile", "gamma", "chromaticity"],
+            "comment": "Has some standard image metadata"
+          }
+        ],
+        
+        "exclusions": [
+          {
+            "field": "parameters",
+            "format": "not_ai_metadata",
+            "comment": "No AI generation markers"
+          },
+          {
+            "field": "exif.usercomment",
+            "format": "not_ai_metadata", 
+            "comment": "No AI in EXIF either"
+          }
+        ]
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "Extract basic image metadata from PIL info",
+        "primary": "pil_info_dictionary",
+        "format": "standard_image_metadata"
+      },
+      
+      "extraction_strategy": "basic_image_info_extraction",
+      
+      "basic_fields": [
+        {
+          "name": "prompt",
+          "method": "static_value",
+          "value": null,
+          "comment": "Not an AI-generated image"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "static_value", 
+          "value": null
+        }
+      ],
+      
+      "image_metadata_fields": [
+        {
+          "name": "software",
+          "method": "extract_from_pil_info",
+          "field": "Software",
+          "type": "string",
+          "optional": true,
+          "description": "Image editor or camera software"
+        },
+        {
+          "name": "dpi",
+          "method": "extract_dpi_tuple",
+          "field": "dpi",
+          "type": "tuple_to_separate_values",
+          "outputs": ["dpi_x", "dpi_y"],
+          "optional": true
+        },
+        {
+          "name": "gamma",
+          "method": "extract_from_pil_info",
+          "field": "gamma",
+          "type": "float",
+          "optional": true
+        },
+        {
+          "name": "icc_profile",
+          "method": "detect_and_summarize",
+          "field": "icc_profile", 
+          "type": "bytes_summary",
+          "optional": true,
+          "description": "Color profile information"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "{software_or_unknown}",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "standard_image",
+      "is_ai_generated": false,
+      
+      "prompt": null,
+      "negative_prompt": null,
+      
+      "parameters": {
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "image_metadata": {
+        "software": "{software}",
+        "dpi_x": "{dpi_x}",
+        "dpi_y": "{dpi_y}",
+        "gamma": "{gamma}",
+        "has_icc_profile": "{icc_profile_present}",
+        "icc_profile_info": "{icc_profile_summary}"
+      }
+    }
+  },
+
+  "notes": {
+    "novelai_formats": [
+      "Legacy: Clean PNG chunk approach - civilized and readable",
+      "Stealth: LSB pixel hiding - for when you want plausible deniability",
+      "Both use similar parameter sets, just different storage methods"
+    ],
+    
+    "midjourney_quirks": [
+      "Everything is command-line style flags in Description chunk",
+      "No negative prompts - doesn't support them",
+      "Job ID links back to Discord generation",
+      "Version numbers map to different model releases"
+    ],
+    
+    "standard_images": [
+      "Fallback for non-AI images",
+      "Extracts basic technical metadata only",
+      "Useful for identifying image editing software"
+    ],
+    
+    "gemini_overthought": [
+      "Original parsers had insane regex orchestras for simple flag parsing",
+      "LSB detection made overcomplicated - it's just magic bytes check",
+      "Standard image parser tried to decode every possible PIL field",
+      "Reality: Much simpler patterns than Gemini imagined!"
+    ]
+  }
+}

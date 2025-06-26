@@ -1,0 +1,252 @@
+{
+  "standard_image_parser": {
+    "parser_name": "Standard Image Metadata (Unfudged & Merged)",
+    "priority": 10,
+    "description": "Fallback parser for non-AI images - combines Gemini's two redundant parsers",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    "note": "Gemini somehow created TWO parsers for the same thing - this merges them",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP", "TIFF", "GIF", "BMP"],
+    
+    "detection_rules": [
+      {
+        "comment": "Lowest priority fallback for regular images with basic metadata",
+        "method": "detect_standard_image_no_ai",
+        
+        "required_conditions": [
+          {
+            "field": "file_format",
+            "type": "recognized_image_format",
+            "formats": ["PNG", "JPEG", "WEBP", "TIFF", "GIF", "BMP"]
+          },
+          {
+            "field": "pil_info",
+            "exists": true,
+            "type": "dictionary"
+          }
+        ],
+        
+        "exclusion_rules": [
+          {
+            "field": "parameters",
+            "format": "not_ai_metadata",
+            "comment": "No AI generation markers in parameters field"
+          },
+          {
+            "field": "workflow", 
+            "format": "not_ai_metadata",
+            "comment": "No ComfyUI workflow data"
+          },
+          {
+            "field": "exif.usercomment",
+            "format": "not_ai_metadata", 
+            "comment": "No AI metadata in EXIF"
+          },
+          {
+            "field": "Comment",
+            "format": "not_ai_metadata",
+            "comment": "No AI metadata in PNG Comment chunk"
+          }
+        ],
+        
+        "detection_logic": "standard_image_format_without_ai_indicators"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Extract basic technical metadata from standard image files",
+        "primary_source": "pil_info_dictionary",
+        "secondary_sources": ["exif_data", "png_chunks"],
+        "approach": "extract_whatever_useful_metadata_exists"
+      },
+      
+      "extraction_method": "basic_image_metadata_extraction",
+      
+      "ai_generation_fields": {
+        "prompt": {
+          "value": null,
+          "comment": "Not an AI-generated image"
+        },
+        "negative_prompt": {
+          "value": null
+        }
+      },
+      
+      "basic_image_metadata": [
+        {
+          "name": "software",
+          "source": "pil_info.Software",
+          "type": "string",
+          "optional": true,
+          "description": "Image editing software or camera software",
+          "examples": ["Adobe Photoshop CC 2023", "GIMP 2.10", "Canon EOS R5"]
+        },
+        {
+          "name": "dimensions",
+          "source": "image_analysis",
+          "fields": ["width", "height"],
+          "type": "integers",
+          "required": true,
+          "comment": "Always available from image file"
+        }
+      ],
+      
+      "technical_metadata": [
+        {
+          "name": "dpi_resolution",
+          "source": "pil_info.dpi",
+          "type": "tuple_extraction",
+          "fields": ["dpi_x", "dpi_y"],
+          "method": "extract_tuple_elements",
+          "optional": true,
+          "description": "Image resolution in dots per inch"
+        },
+        {
+          "name": "gamma_correction",
+          "source": "pil_info.gamma",
+          "type": "float",
+          "optional": true,
+          "description": "Gamma correction value"
+        },
+        {
+          "name": "color_profile",
+          "source": "pil_info.icc_profile",
+          "type": "bytes_analysis",
+          "optional": true,
+          "extraction": "detect_presence_and_size",
+          "description": "ICC color profile information"
+        },
+        {
+          "name": "chromaticity_info",
+          "source": "pil_info.chromaticity",
+          "type": "object_to_string",
+          "optional": true,
+          "description": "Color chromaticity coordinates"
+        }
+      ],
+      
+      "file_format_info": [
+        {
+          "name": "format",
+          "source": "pil_format",
+          "type": "string",
+          "description": "Image format (PNG, JPEG, etc.)"
+        },
+        {
+          "name": "color_mode",
+          "source": "pil_mode", 
+          "type": "string",
+          "description": "Color mode (RGB, RGBA, L, etc.)"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "{software_or_unknown}",
+      "parser_version": "unfudged_merged_v1",
+      "workflow_type": "standard_image_no_ai",
+      "is_ai_generated": false,
+      "parser_note": "merged_from_geminis_duplicate_parsers",
+      
+      "prompt": null,
+      "negative_prompt": null,
+      
+      "parameters": {
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "image_metadata": {
+        "software": "{software}",
+        "file_format": "{format}",
+        "color_mode": "{color_mode}",
+        "dpi_x": "{dpi_x}",
+        "dpi_y": "{dpi_y}",
+        "gamma": "{gamma}",
+        "has_color_profile": "{icc_profile_present}",
+        "color_profile_size": "{icc_profile_size}",
+        "chromaticity": "{chromaticity}"
+      },
+      
+      "raw_pil_info": "{pil_info_summary}"
+    }
+  },
+
+  "gemini_duplication_explanation": {
+    "what_happened": [
+      "Gemini created TWO parsers for standard images",
+      "Both do exactly the same thing",
+      "Different method names but same functionality",
+      "Same detection logic, same extraction goals",
+      "Slightly different field naming conventions"
+    ],
+    
+    "parser_1_approach": {
+      "name": "Standard Image (Non-AI, with EXIF/PNG Chunks)",
+      "priority": 10,
+      "methods": ["direct_context_value", "direct_context_pil_info_path_transform"],
+      "field_prefix": "tool_specific.software"
+    },
+    
+    "parser_2_approach": {
+      "name": "Standard Image (PIL Info Details)",
+      "priority": 15,
+      "methods": ["direct_json_path", "direct_json_path_transform_tuple_element"],
+      "field_prefix": "tool_specific.pil_software"
+    },
+    
+    "the_irony": [
+      "Both parsers extract: software, DPI, gamma, ICC profile",
+      "Both have same detection rules: no AI metadata",
+      "Both target same file types: PNG, JPEG, WEBP, TIFF",
+      "Gemini just... made the same thing twice with different words"
+    ]
+  },
+
+  "merged_parser_benefits": [
+    "Eliminates redundancy - one parser instead of two",
+    "Cleaner field naming - no confusing prefixes",
+    "Single priority level - no conflicts",
+    "Same functionality - nothing lost in merge",
+    "Easier maintenance - one parser to update",
+    "Less confusion - clear purpose and scope"
+  ],
+
+  "implementation_notes": {
+    "priority_strategy": [
+      "Use priority 10 (lowest of the two originals)",
+      "Ensures it only runs as true fallback",
+      "Won't interfere with AI-specific parsers"
+    ],
+    
+    "field_extraction": [
+      "Use simplest method names that work",
+      "No need for 'direct_context_pil_info_path_transform' complexity",
+      "Just extract DPI tuple as [0] and [1]",
+      "Check ICC profile existence, note size if present"
+    ],
+    
+    "detection_logic": [
+      "Must be standard image format",
+      "Must NOT have AI metadata markers",
+      "Lowest priority ensures it's true fallback"
+    ]
+  },
+
+  "why_gemini_did_this": {
+    "theory_1": "Lost track of what it already created",
+    "theory_2": "Thought 'EXIF/PNG Chunks' vs 'PIL Info' were different",
+    "theory_3": "Wanted to try different method naming conventions",
+    "theory_4": "Just really enthusiastic about parsing standard images",
+    "reality": "AI confusion leading to redundant parsers"
+  },
+
+  "lesson_learned": [
+    "Always check for duplicate functionality before creating parsers",
+    "Same extraction goals = same parser (just use different methods internally)",
+    "Clear naming prevents confusion about parser purpose",
+    "One focused parser is better than two overlapping ones"
+  ]
+}

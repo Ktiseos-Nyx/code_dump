@@ -1,0 +1,310 @@
+{
+  "civitai_parser_system": {
+    "description": "Civitai uses TWO different formats depending on generation method",
+    "format_1": "A1111 WebUI style (with Civitai resource tracking)",
+    "format_2": "ComfyUI style (with extraMetadata injection)",
+    "approach": "Two focused parsers instead of one confused monster"
+  },
+
+  "civitai_a1111_parser": {
+    "parser_name": "Civitai A1111 Style (Unfudged)",
+    "priority": 115,
+    "description": "For images generated on Civitai using A1111 WebUI interface",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP"],
+    
+    "detection_rules": [
+      {
+        "comment": "Standard A1111 format with Civitai resource tracking",
+        "method": "detect_a1111_with_civitai_markers",
+        
+        "required_a1111_basics": [
+          "Steps:", "Sampler:", "CFG scale:", "Seed:", "Size:"
+        ],
+        
+        "civitai_specific_markers": [
+          {
+            "marker": "Civitai resources:",
+            "confidence": "very_high",
+            "comment": "JSON array of models/LoRAs used"
+          },
+          {
+            "marker": "Civitai metadata:",
+            "confidence": "very_high", 
+            "comment": "JSON object with generation info"
+          }
+        ],
+        
+        "detection_logic": "requires_a1111_basics_plus_civitai_markers"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "Standard A1111 text format with Civitai extensions",
+        "primary": "pil_info.parameters",
+        "fallback": "exif.usercomment",
+        "format": "a1111_text_with_json_fields"
+      },
+      
+      "extraction_strategy": "a1111_plus_civitai_resources",
+      
+      "standard_fields": [
+        {
+          "name": "prompt",
+          "method": "extract_before_negative_prompt"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "extract_after_negative_prompt",
+          "fallback": ""
+        },
+        {
+          "name": "steps",
+          "method": "find_key_value",
+          "key": "Steps",
+          "type": "integer"
+        },
+        {
+          "name": "sampler_name",
+          "method": "find_key_value", 
+          "key": "Sampler",
+          "type": "string"
+        },
+        {
+          "name": "cfg_scale",
+          "method": "find_key_value",
+          "key": "CFG scale",
+          "type": "float"
+        },
+        {
+          "name": "seed",
+          "method": "find_key_value",
+          "key": "Seed", 
+          "type": "integer"
+        },
+        {
+          "name": "size",
+          "method": "find_key_value",
+          "key": "Size",
+          "type": "dimensions",
+          "parser": "split_width_height"
+        }
+      ],
+      
+      "civitai_specific_fields": [
+        {
+          "name": "civitai_resources",
+          "method": "extract_json_field",
+          "key": "Civitai resources",
+          "type": "array",
+          "description": "List of models, LoRAs, embeddings used",
+          "sample": "[{\"type\": \"model\", \"name\": \"dreamshaper\", \"hash\": \"abc123\"}]"
+        },
+        {
+          "name": "civitai_metadata", 
+          "method": "extract_json_field",
+          "key": "Civitai metadata",
+          "type": "object",
+          "description": "Generation metadata from Civitai platform",
+          "sample": "{\"workflowId\": \"123\", \"createdAt\": \"2024-01-01\"}"
+        },
+        {
+          "name": "created_date",
+          "method": "find_key_value",
+          "key": "Created Date",
+          "type": "string",
+          "optional": true
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Civitai (A1111 Style)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "civitai_a1111",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}",
+        "clip_skip": "{clip_skip}"
+      },
+      
+      "civitai_data": {
+        "resources": "{civitai_resources}",
+        "metadata": "{civitai_metadata}",
+        "created_date": "{created_date}",
+        "generation_method": "a1111_webui"
+      },
+      
+      "raw_metadata": "{original_a1111_string}"
+    }
+  },
+
+  "civitai_comfyui_parser": {
+    "parser_name": "Civitai ComfyUI Style (Unfudged)",
+    "priority": 150,
+    "description": "For images generated on Civitai using ComfyUI workflows",
+    "version": "1.0", 
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "ComfyUI workflow with Civitai's extraMetadata injection",
+        "method": "detect_comfyui_with_civitai_extras",
+        
+        "required_structure": [
+          {
+            "field": "workflow",
+            "type": "json",
+            "required": true
+          },
+          {
+            "field": "extra.extraMetadata", 
+            "type": "json_string",
+            "required": true,
+            "comment": "Civitai injects their data here"
+          }
+        ],
+        
+        "detection_logic": "has_comfyui_workflow_with_civitai_extraMetadata"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_source": {
+        "comment": "ComfyUI workflow with Civitai metadata in extra.extraMetadata",
+        "primary": "workflow",
+        "fallback": "prompt", 
+        "format": "comfyui_json_with_civitai_extras"
+      },
+      
+      "extraction_strategy": "extract_from_civitai_extraMetadata",
+      "description": "Civitai embeds clean metadata in extra.extraMetadata as JSON string",
+      
+      "metadata_fields": [
+        {
+          "name": "prompt",
+          "method": "extract_from_extraMetadata",
+          "field": "prompt",
+          "type": "string"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "extract_from_extraMetadata", 
+          "field": "negativePrompt",
+          "type": "string",
+          "fallback": ""
+        },
+        {
+          "name": "steps",
+          "method": "extract_from_extraMetadata",
+          "field": "steps",
+          "type": "integer"
+        },
+        {
+          "name": "cfg_scale",
+          "method": "extract_from_extraMetadata",
+          "field": "cfgScale", 
+          "type": "float"
+        },
+        {
+          "name": "seed",
+          "method": "extract_from_extraMetadata",
+          "field": "seed",
+          "type": "integer"
+        },
+        {
+          "name": "sampler_name",
+          "method": "extract_from_extraMetadata",
+          "field": "sampler",
+          "type": "string"
+        },
+        {
+          "name": "dimensions",
+          "method": "extract_from_extraMetadata",
+          "fields": ["width", "height"],
+          "type": "integers"
+        }
+      ],
+      
+      "civitai_workflow_fields": [
+        {
+          "name": "workflow_id",
+          "method": "extract_from_extraMetadata",
+          "field": "workflowId",
+          "type": "string",
+          "description": "Civitai's workflow identifier"
+        },
+        {
+          "name": "resources",
+          "method": "extract_from_extraMetadata",
+          "field": "resources", 
+          "type": "array",
+          "description": "Models/LoRAs used in this workflow"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Civitai (ComfyUI Style)", 
+      "parser_version": "unfudged_v1",
+      "workflow_type": "civitai_comfyui",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "civitai_data": {
+        "workflow_id": "{workflow_id}",
+        "resources": "{resources}",
+        "generation_method": "comfyui_workflow",
+        "has_clean_metadata": true
+      },
+      
+      "raw_workflow": "{original_comfyui_workflow}"
+    }
+  },
+
+  "notes": {
+    "civitai_explained": [
+      "Civitai is a model-sharing platform that also generates images",
+      "They support BOTH A1111 WebUI and ComfyUI generation",
+      "A1111 style: Adds 'Civitai resources:' and 'Civitai metadata:' to standard format",
+      "ComfyUI style: Injects clean metadata into extra.extraMetadata field",
+      "The ComfyUI approach is actually cleaner - structured JSON instead of text parsing"
+    ],
+    
+    "why_two_parsers": [
+      "Different generation methods = different metadata formats",
+      "A1111 parser: Handles text-based metadata with JSON strings embedded",
+      "ComfyUI parser: Handles clean JSON metadata injection",
+      "Much better than one parser trying to handle both formats"
+    ],
+    
+    "gemini_overthought": [
+      "Original parsers had crazy JSON path traversal logic",
+      "Reality: Just extract extra.extraMetadata and parse it",
+      "Civitai actually makes this easier, not harder!"
+    ]
+  }
+}

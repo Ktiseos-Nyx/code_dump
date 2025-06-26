@@ -1,0 +1,333 @@
+{
+  "drawthings_parser": {
+    "parser_name": "Draw Things (Unfudged)",
+    "priority": 95,
+    "description": "Draw Things - Mobile-first AI art app with XMP metadata integration",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP", "TIFF"],
+    
+    "platform_info": {
+      "description": "Draw Things is a native iOS/Mac AI art application",
+      "platform_focus": "Apple ecosystem (iOS, macOS)",
+      "target_audience": "Mobile users and Mac users wanting local AI generation",
+      "unique_features": ["Native mobile app", "Local processing", "Apple Silicon optimization"],
+      "metadata_philosophy": "Professional photo standards with mobile efficiency"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Draw Things uses XMP metadata with JSON in exif:UserComment",
+        "method": "detect_drawthings_xmp_structure",
+        
+        "required_xmp_structure": [
+          {
+            "field": "XMP metadata",
+            "exists": true,
+            "required": true,
+            "comment": "Professional photo metadata standard"
+          },
+          {
+            "field": "exif:UserComment within XMP",
+            "format": "valid_json", 
+            "required": true,
+            "comment": "JSON data nested in XMP structure"
+          }
+        ],
+        
+        "drawthings_signatures": [
+          {
+            "field": "c",
+            "description": "Short code for prompt/conditioning",
+            "confidence": "high",
+            "comment": "Minimal field naming for mobile efficiency"
+          },
+          {
+            "field": "sampler", 
+            "description": "Standard sampler field",
+            "confidence": "medium",
+            "comment": "Combined with 'c' gives strong signature"
+          },
+          {
+            "field": "uc",
+            "description": "Short code for negative prompt/unconditioning", 
+            "confidence": "high",
+            "comment": "Very specific to Draw Things naming"
+          },
+          {
+            "field": "scale",
+            "instead_of": "cfg_scale",
+            "description": "Simplified CFG scale naming",
+            "confidence": "medium"
+          }
+        ],
+        
+        "detection_logic": "xmp_with_json_usercomment_containing_drawthings_short_codes"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Extract JSON from XMP metadata nested structure",
+        "data_flow": [
+          "1. Extract XMP metadata from image",
+          "2. Find exif:UserComment within XMP",
+          "3. Parse UserComment content as JSON",
+          "4. Extract fields using Draw Things short codes"
+        ],
+        "complexity": "moderate_due_to_xmp_nesting"
+      },
+      
+      "extraction_method": "xmp_nested_json_extraction",
+      
+      "xmp_extraction_steps": [
+        {
+          "step": "xmp_metadata_extraction",
+          "target": "full_xmp_string_from_image"
+        },
+        {
+          "step": "xmp_usercomment_isolation",
+          "target": "exif_usercomment_field_within_xmp"
+        },
+        {
+          "step": "json_parsing",
+          "target": "parse_usercomment_content_as_json"
+        }
+      ],
+      
+      "field_extraction": {
+        "prompt_fields": [
+          {
+            "name": "prompt",
+            "drawthings_field": "c",
+            "type": "string",
+            "description": "Short code for conditioning/prompt",
+            "required": true
+          },
+          {
+            "name": "negative_prompt",
+            "drawthings_field": "uc", 
+            "type": "string",
+            "description": "Short code for unconditioning/negative prompt",
+            "fallback": ""
+          }
+        ],
+        
+        "generation_parameters": [
+          {
+            "name": "seed",
+            "drawthings_field": "seed",
+            "type": "integer_or_string",
+            "description": "Random seed"
+          },
+          {
+            "name": "steps",
+            "drawthings_field": "steps", 
+            "type": "integer",
+            "description": "Inference steps"
+          },
+          {
+            "name": "cfg_scale",
+            "drawthings_field": "scale",
+            "type": "float",
+            "description": "CFG scale (simplified naming)"
+          },
+          {
+            "name": "sampler_name",
+            "drawthings_field": "sampler",
+            "type": "string",
+            "description": "Sampling algorithm"
+          },
+          {
+            "name": "model",
+            "drawthings_field": "model",
+            "type": "string",
+            "optional": true,
+            "description": "AI model used"
+          }
+        ],
+        
+        "image_dimensions": [
+          {
+            "name": "size",
+            "drawthings_field": "size",
+            "type": "string",
+            "format": "WIDTHxHEIGHT",
+            "parsing": "split_to_width_and_height",
+            "optional": true,
+            "description": "Image dimensions as string"
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "Draw Things",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "drawthings_mobile_xmp",
+      "platform_type": "native_mobile_app",
+      
+      "prompt": "{c_field}",
+      "negative_prompt": "{uc_field}",
+      
+      "parameters": {
+        "seed": "{seed}",
+        "steps": "{steps}",
+        "cfg_scale": "{scale}",
+        "sampler_name": "{sampler}",
+        "model": "{model}",
+        "width": "{width_from_size}",
+        "height": "{height_from_size}"
+      },
+      
+      "drawthings_specific": {
+        "platform": "iOS/macOS native app",
+        "metadata_standard": "XMP with JSON UserComment",
+        "field_naming": "minimalist_short_codes",
+        "mobile_optimized": true,
+        "apple_ecosystem": true
+      },
+      
+      "xmp_metadata": {
+        "full_xmp_string": "{original_xmp}",
+        "usercomment_json": "{extracted_usercomment_json}"
+      }
+    }
+  },
+
+  "drawthings_mobile_context": {
+    "why_mobile_ai_matters": [
+      "Accessibility: AI art generation on phones/tablets",
+      "Convenience: No need for powerful desktop setups", 
+      "Privacy: Local processing instead of cloud services",
+      "Integration: Works with existing photo libraries"
+    ],
+    
+    "apple_ecosystem_advantages": [
+      "Neural Engine acceleration on Apple Silicon",
+      "Optimized for iOS/macOS performance",
+      "Native app experience vs web interfaces",
+      "CoreML framework integration"
+    ],
+    
+    "mobile_constraints": [
+      "Limited memory compared to desktop",
+      "Battery life considerations",
+      "Smaller models to fit mobile hardware",
+      "Touch-friendly interface requirements"
+    ]
+  },
+
+  "xmp_metadata_strategy": {
+    "why_xmp": [
+      "Professional photography standard",
+      "Supported by photo editing software",
+      "Integrates with existing photo workflows",
+      "Preserves metadata across platforms"
+    ],
+    
+    "xmp_structure": {
+      "format": "XML-based metadata container",
+      "location": "Embedded in image files",
+      "standards": "Adobe XMP specification",
+      "compatibility": "Lightroom, Photoshop, etc."
+    },
+    
+    "usercomment_nesting": {
+      "approach": "JSON data within exif:UserComment field",
+      "benefit": "Structured data in standard metadata location",
+      "challenge": "Requires XMP parsing to access JSON"
+    }
+  },
+
+  "field_naming_philosophy": {
+    "minimalist_approach": {
+      "c": "conditioning (prompt)",
+      "uc": "unconditioning (negative prompt)",
+      "scale": "cfg_scale",
+      "sampler": "sampler_name",
+      "size": "widthxheight"
+    },
+    
+    "mobile_efficiency": [
+      "Shorter field names save space",
+      "Faster JSON parsing on mobile",
+      "Less network overhead if syncing",
+      "Optimized for touch typing"
+    ],
+    
+    "vs_verbose_platforms": [
+      "Easy Diffusion: 'num_inference_steps'",
+      "Draw Things: 'steps'",
+      "Philosophy: Mobile efficiency over verbosity"
+    ]
+  },
+
+  "drawthings_vs_other_platforms": {
+    "mobile_native": {
+      "drawthings": "Native iOS/Mac app with local processing",
+      "web_platforms": "Browser-based, often cloud processing",
+      "advantage": "Better performance, privacy, offline capability"
+    },
+    
+    "metadata_approach": {
+      "drawthings": "XMP standard + minimalist JSON",
+      "most_others": "Custom formats or verbose JSON", 
+      "advantage": "Professional photo workflow integration"
+    },
+    
+    "target_audience": {
+      "drawthings": "Mobile users, Mac users, photographers",
+      "desktop_platforms": "Power users, developers, technical users",
+      "difference": "Accessibility vs maximum control"
+    }
+  },
+
+  "implementation_notes": {
+    "xmp_parsing_challenges": [
+      "Need XMP metadata extraction capability",
+      "Parse XML structure to find exif:UserComment",
+      "Extract JSON from UserComment content",
+      "Handle potential XML escaping issues"
+    ],
+    
+    "field_mapping": [
+      "c → prompt (conditioning)",
+      "uc → negative_prompt (unconditioning)", 
+      "scale → cfg_scale",
+      "size → width + height (parse 'WxH' format)"
+    ],
+    
+    "error_handling": [
+      "Missing XMP: Not Draw Things",
+      "Invalid UserComment JSON: Corrupted metadata",
+      "Missing required fields: Partial extraction"
+    ]
+  },
+
+  "why_drawthings_matters": [
+    "Democratizes AI art generation (mobile accessibility)",
+    "Local processing respects privacy",
+    "Professional metadata standards integration",
+    "Apple ecosystem optimization",
+    "Proves mobile AI art generation is viable"
+  ],
+
+  "gemini_overcomplicated": [
+    "Original: 'regex_transform_from_variable' for size parsing",
+    "Unfudged: Split 'WxH' string on 'x' and convert to integers",
+    "Original: Complex variable transformations",
+    "Unfudged: Direct field mapping with short code translations",
+    "Original: Multiple transformation steps",
+    "Unfudged: XMP → UserComment → JSON → fields (clean pipeline)"
+  ],
+
+  "notes": [
+    "Draw Things: Mobile-first AI art with professional metadata",
+    "XMP integration: Smart use of photography standards",
+    "Short codes: Mobile-optimized field naming (c, uc, scale)",
+    "Apple focus: Optimized for iOS/macOS ecosystem",
+    "Accessibility: Makes AI art generation truly mobile"
+  ]
+}

@@ -1,0 +1,308 @@
+{
+  "mochi_diffusion_parser": {
+    "parser_name": "Mochi Diffusion (Unfudged)",
+    "priority": 98,
+    "description": "Mochi Diffusion - AI art platform using professional IPTC metadata standards",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["JPEG", "TIFF", "PNG"],
+    
+    "platform_info": {
+      "description": "Mochi Diffusion uses IPTC metadata - the professional photography standard",
+      "unique_feature": "Professional metadata integration instead of custom JSON",
+      "target_audience": "Mac users + photographers who want AI art in their existing workflows",
+      "metadata_philosophy": "integrate_with_existing_photo_management_tools"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Mochi Diffusion uses IPTC metadata fields for AI generation data",
+        "method": "detect_mochi_iptc_signature",
+        
+        "platform_identification": [
+          {
+            "field": "IPTC:OriginatingProgram",
+            "contains": "Mochi Diffusion",
+            "case_sensitive": false,
+            "confidence": "definitive"
+          },
+          {
+            "field": "IPTC:CaptionAbstract", 
+            "contains": "Generator: Mochi Diffusion",
+            "confidence": "very_high"
+          }
+        ],
+        
+        "required_data": [
+          {
+            "field": "IPTC:CaptionAbstract",
+            "exists": true,
+            "required": true,
+            "comment": "Contains all generation parameters"
+          }
+        ],
+        
+        "detection_logic": "iptc_originating_program_or_generator_signature_plus_caption_data"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Extract AI generation data from professional IPTC metadata",
+        "primary_source": "IPTC:CaptionAbstract",
+        "format": "key_value_pairs_with_semicolon_separation",
+        "example": "Include in Image: beautiful sunset; Steps: 20; Guidance Scale: 7.5; Seed: 12345",
+        "secondary_source": "IPTC:OriginatingProgram for platform identification"
+      },
+      
+      "extraction_method": "iptc_key_value_parsing",
+      
+      "iptc_field_mapping": {
+        "comment": "Mochi uses photography-friendly field names",
+        
+        "prompt_fields": [
+          {
+            "name": "prompt",
+            "iptc_key": "Include in Image",
+            "type": "string",
+            "description": "Positive prompt with photography terminology"
+          },
+          {
+            "name": "negative_prompt",
+            "iptc_key": "Exclude from Image", 
+            "type": "string",
+            "description": "Negative prompt with photography terminology",
+            "optional": true
+          }
+        ],
+        
+        "generation_parameters": [
+          {
+            "name": "cfg_scale",
+            "iptc_key": "Guidance Scale",
+            "type": "float",
+            "description": "CFG scale with more intuitive naming"
+          },
+          {
+            "name": "steps",
+            "iptc_key": "Steps",
+            "type": "integer",
+            "description": "Inference steps"
+          },
+          {
+            "name": "seed",
+            "iptc_key": "Seed",
+            "type": "integer_or_string",
+            "description": "Random seed"
+          },
+          {
+            "name": "sampler_name",
+            "iptc_key": "Scheduler",
+            "type": "string",
+            "description": "Sampler/scheduler algorithm"
+          },
+          {
+            "name": "model",
+            "iptc_key": "Model",
+            "type": "string",
+            "optional": true,
+            "description": "AI model used"
+          }
+        ],
+        
+        "image_parameters": [
+          {
+            "name": "size",
+            "iptc_key": "Size",
+            "type": "string",
+            "format": "WIDTHxHEIGHT",
+            "parsing": "split_to_width_and_height",
+            "optional": true
+          },
+          {
+            "name": "upscaler",
+            "iptc_key": "Upscaler",
+            "type": "string",
+            "optional": true,
+            "description": "Upscaling method used"
+          }
+        ],
+        
+        "platform_metadata": [
+          {
+            "name": "generator_info",
+            "iptc_key": "Generator",
+            "type": "string",
+            "optional": true,
+            "description": "Platform version and details"
+          },
+          {
+            "name": "generation_date",
+            "iptc_key": "Date",
+            "type": "string",
+            "optional": true,
+            "description": "When the image was generated"
+          }
+        ],
+        
+        "mochi_specific": [
+          {
+            "name": "ml_compute_unit",
+            "iptc_key": "ML Compute Unit",
+            "type": "string",
+            "optional": true,
+            "description": "Mac-specific: CPU, GPU, Neural Engine",
+            "note": "Likely Mac-focused platform"
+          }
+        ]
+      },
+      
+      "parsing_format": {
+        "structure": "semicolon_separated_key_value_pairs",
+        "format": "Key: Value; Key2: Value2; Key3: Value3",
+        "separators": {
+          "key_value": ":",
+          "pair_separator": ";"
+        },
+        "whitespace_handling": "trim_around_separators"
+      }
+    },
+    
+    "output_format": {
+      "tool": "Mochi Diffusion",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "mochi_diffusion_iptc",
+      "metadata_standard": "iptc_professional_photography",
+      
+      "prompt": "{include_in_image}",
+      "negative_prompt": "{exclude_from_image}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{guidance_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{scheduler}",
+        "model": "{model}",
+        "width": "{width_from_size}",
+        "height": "{height_from_size}",
+        "upscaler": "{upscaler}",
+        "generation_date": "{date}"
+      },
+      
+      "mochi_specific": {
+        "ml_compute_unit": "{ml_compute_unit}",
+        "generator_info": "{generator}",
+        "uses_iptc_standard": true,
+        "photography_workflow_compatible": true
+      },
+      
+      "iptc_metadata": {
+        "originating_program": "{iptc_originating_program}",
+        "caption_abstract": "{iptc_caption_abstract_raw}"
+      }
+    }
+  },
+
+  "why_iptc_is_brilliant": {
+    "professional_integration": [
+      "IPTC is the standard for professional photography",
+      "Photo editing software already supports IPTC",
+      "Integrates with existing photo management workflows",
+      "Photographers understand this metadata format"
+    ],
+    
+    "technical_advantages": [
+      "Human readable field names",
+      "Industry standard format",
+      "Software compatibility across photo tools",
+      "Separates platform ID from generation data"
+    ],
+    
+    "user_experience": [
+      "Include/Exclude instead of positive/negative prompts",
+      "Guidance Scale instead of CFG scale",
+      "Photography-friendly terminology",
+      "Works with existing photo organization tools"
+    ]
+  },
+
+  "mochi_platform_insights": {
+    "target_audience": [
+      "Mac users (ML Compute Unit suggests Apple ecosystem)",
+      "Professional photographers wanting AI integration",
+      "Users with existing photo management workflows",
+      "People who prefer industry standards over custom formats"
+    ],
+    
+    "design_philosophy": [
+      "Integrate with existing tools instead of creating new workflows",
+      "Use professional standards instead of custom formats",
+      "Photography-friendly terminology",
+      "Platform identification through standard metadata fields"
+    ],
+    
+    "unique_approach": [
+      "Only platform using IPTC for AI metadata",
+      "Bridges professional photography and AI art",
+      "Standards-compliant metadata storage",
+      "Human-readable field naming"
+    ]
+  },
+
+  "field_naming_translation": {
+    "mochi_to_standard": {
+      "Include_in_Image": "positive_prompt",
+      "Exclude_from_Image": "negative_prompt", 
+      "Guidance_Scale": "cfg_scale",
+      "Scheduler": "sampler_name",
+      "ML_Compute_Unit": "hardware_acceleration"
+    },
+    
+    "why_different_names": [
+      "Photography terminology instead of AI jargon",
+      "More intuitive for non-technical users",
+      "Consistent with IPTC field naming conventions",
+      "Professional workflow integration"
+    ]
+  },
+
+  "implementation_notes": {
+    "iptc_extraction": [
+      "Read IPTC:OriginatingProgram for platform detection",
+      "Parse IPTC:CaptionAbstract as key:value; pairs",
+      "Handle whitespace around separators",
+      "Extract platform version from Generator field"
+    ],
+    
+    "parsing_strategy": [
+      "Split CaptionAbstract on semicolons",
+      "Split each pair on first colon",
+      "Trim whitespace from keys and values",
+      "Map Mochi field names to standard names"
+    ],
+    
+    "size_handling": [
+      "Size field format: '512x768'",
+      "Parse with regex: (\\d+)x(\\d+)",
+      "Extract width and height separately"
+    ]
+  },
+
+  "gemini_overcomplicated": [
+    "Original: 'regex_transform_from_variable' for size parsing",
+    "Unfudged: Just split '512x768' on 'x' and convert to integers",
+    "Original: 'coalesce_variables' for tool name",
+    "Unfudged: Use Generator field, fallback to OriginatingProgram",
+    "Original: Complex variable key references",
+    "Unfudged: Direct field extraction from IPTC data"
+  ],
+
+  "notes": [
+    "Mochi Diffusion: The photography-professional's AI art platform",
+    "IPTC usage: Actually brilliant integration with existing workflows",
+    "Field naming: Photography-friendly instead of AI jargon",
+    "Mac focus: ML Compute Unit suggests Apple ecosystem target",
+    "Standards compliance: Uses established metadata formats"
+  ]
+}

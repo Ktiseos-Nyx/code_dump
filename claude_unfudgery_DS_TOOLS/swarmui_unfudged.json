@@ -1,0 +1,305 @@
+{
+  "swarmui_parser": {
+    "parser_name": "StableSwarmUI (Unfudged)",
+    "priority": 108,
+    "description": "StableSwarmUI - Multi-backend AI art interface with unified metadata",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP"],
+    
+    "platform_info": {
+      "description": "StableSwarmUI is a unified frontend for multiple AI art backends",
+      "backends_supported": ["ComfyUI", "Automatic1111 WebUI", "Custom implementations"],
+      "philosophy": "One interface to rule them all",
+      "metadata_approach": "Backend-agnostic with conditional nesting"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "SwarmUI stores JSON with optional sui_image_params nesting",
+        "method": "detect_swarmui_metadata_structure",
+        
+        "required_json_source": {
+          "sources": ["parameters_png_chunk", "exif_usercomment"],
+          "format": "valid_json",
+          "required": true
+        },
+        
+        "swarmui_signatures": [
+          {
+            "signature": "sui_image_params",
+            "location": "json_root_level",
+            "confidence": "definitive",
+            "comment": "SwarmUI-specific nested structure"
+          },
+          {
+            "signature_combo": ["prompt", "seed", "model", "steps", "cfgscale"],
+            "minimum_matches": 3,
+            "confidence": "high",
+            "comment": "SwarmUI field naming conventions"
+          },
+          {
+            "signature_combo": ["comfyuisampler", "autowebuisampler"],
+            "minimum_matches": 1,
+            "confidence": "very_high",
+            "comment": "Backend-specific sampler fields"
+          }
+        ],
+        
+        "detection_logic": "json_with_sui_signature_or_swarmui_field_patterns"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Handle SwarmUI's conditional nesting approach",
+        "data_flow": [
+          "1. Extract JSON from parameters chunk or EXIF",
+          "2. Check for sui_image_params nesting",
+          "3. Use nested object if present, otherwise use root",
+          "4. Extract fields using SwarmUI naming conventions"
+        ],
+        "nesting_handling": "conditional_extraction_based_on_sui_image_params"
+      },
+      
+      "extraction_method": "swarmui_conditional_nesting",
+      
+      "step_1_json_extraction": {
+        "sources": ["pil_info.parameters", "exif.usercomment"],
+        "method": "parse_json_string",
+        "result": "outer_json_object"
+      },
+      
+      "step_2_nesting_detection": {
+        "check_for": "sui_image_params",
+        "if_present": "use_nested_object_as_data_source",
+        "if_absent": "use_outer_json_as_data_source",
+        "result": "actual_metadata_object"
+      },
+      
+      "field_extraction": {
+        "prompt_fields": [
+          {
+            "name": "prompt",
+            "source": "metadata_object",
+            "field": "prompt",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "negative_prompt",
+            "source": "metadata_object",
+            "field": "negativeprompt",
+            "type": "string",
+            "fallback": "",
+            "note": "SwarmUI uses 'negativeprompt' (no underscore)"
+          }
+        ],
+        
+        "generation_parameters": [
+          {
+            "name": "seed",
+            "source": "metadata_object",
+            "field": "seed",
+            "type": "integer_or_string",
+            "description": "Random seed for generation"
+          },
+          {
+            "name": "steps",
+            "source": "metadata_object", 
+            "field": "steps",
+            "type": "integer",
+            "description": "Number of inference steps"
+          },
+          {
+            "name": "cfg_scale",
+            "source": "metadata_object",
+            "field": "cfgscale",
+            "type": "float",
+            "note": "SwarmUI uses 'cfgscale' (no underscore)"
+          },
+          {
+            "name": "model",
+            "source": "metadata_object",
+            "field": "model",
+            "type": "string",
+            "optional": true
+          },
+          {
+            "name": "dimensions",
+            "source": "metadata_object",
+            "fields": ["width", "height"],
+            "type": "integers",
+            "optional": true
+          }
+        ],
+        
+        "backend_specific_fields": [
+          {
+            "name": "sampler_name",
+            "source": "metadata_object",
+            "method": "prioritized_field_extraction",
+            "fields": [
+              {
+                "field": "comfyuisampler",
+                "backend": "ComfyUI",
+                "priority": 1
+              },
+              {
+                "field": "autowebuisampler", 
+                "backend": "Automatic1111",
+                "priority": 2
+              }
+            ],
+            "description": "Sampler varies by backend used"
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "StableSwarmUI",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "swarmui_multi_backend",
+      "backend_agnostic": true,
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "seed": "{seed}",
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "model": "{model}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}"
+      },
+      
+      "swarmui_specific": {
+        "backend_detected": "{backend_from_sampler_field}",
+        "nesting_format": "{sui_image_params_present}",
+        "supports_multiple_backends": true,
+        "unified_interface": true
+      },
+      
+      "raw_metadata": {
+        "outer_json": "{original_json}",
+        "extracted_params": "{actual_metadata_object}"
+      }
+    }
+  },
+
+  "swarmui_architecture_explained": {
+    "the_vision": [
+      "One UI to control multiple AI art backends",
+      "User doesn't need to learn different interfaces",
+      "Backend switching without workflow changes",
+      "Unified parameter sets across different engines"
+    ],
+    
+    "metadata_challenges": [
+      "Different backends have different parameter names",
+      "Some parameters only exist in certain backends", 
+      "Need to store which backend was used",
+      "Conditional nesting for organization"
+    ],
+    
+    "clever_solutions": [
+      "sui_image_params for clean organization",
+      "Backend-specific sampler fields",
+      "Unified field names where possible",
+      "Fallback handling for missing parameters"
+    ]
+  },
+
+  "backend_detection_logic": {
+    "comfyui_indicators": [
+      "comfyuisampler field present",
+      "Sampler names like 'euler', 'dpmpp_2m'",
+      "ComfyUI-style parameter combinations"
+    ],
+    
+    "a1111_indicators": [
+      "autowebuisampler field present", 
+      "A1111-style sampler names",
+      "WebUI-specific parameter patterns"
+    ],
+    
+    "generic_swarmui": [
+      "No backend-specific fields",
+      "Just core parameters",
+      "SwarmUI's own defaults"
+    ]
+  },
+
+  "conditional_nesting_explained": {
+    "format_1_direct": {
+      "structure": "{\"prompt\": \"sunset\", \"seed\": 123, \"steps\": 20}",
+      "when_used": "Simple generations or legacy format",
+      "extraction": "direct_field_access"
+    },
+    
+    "format_2_nested": {
+      "structure": "{\"sui_image_params\": {\"prompt\": \"sunset\", \"seed\": 123}}",
+      "when_used": "Organized storage or complex workflows",
+      "extraction": "extract_sui_image_params_then_fields"
+    },
+    
+    "parser_logic": [
+      "1. Parse outer JSON",
+      "2. Check if sui_image_params exists",
+      "3. If yes: use nested object as data source",
+      "4. If no: use outer object as data source",
+      "5. Extract fields from chosen data source"
+    ]
+  },
+
+  "implementation_notes": {
+    "key_challenges": [
+      "Conditional nesting detection",
+      "Backend-specific field handling",
+      "Sampler name resolution across backends",
+      "Parameter compatibility across different engines"
+    ],
+    
+    "parsing_strategy": [
+      "Flexible JSON structure handling",
+      "Prioritized field extraction for samplers",
+      "Graceful fallbacks for missing parameters",
+      "Backend detection from available fields"
+    ],
+    
+    "field_naming_quirks": [
+      "negativeprompt (no underscore)",
+      "cfgscale (no underscore)", 
+      "comfyuisampler vs autowebuisampler",
+      "Backend-specific parameter variations"
+    ]
+  },
+
+  "why_swarmui_is_interesting": [
+    "Ambitious goal: unified interface for all AI art",
+    "Smart metadata approach: backend-agnostic with specifics",
+    "Real-world solution: people DO use multiple backends",
+    "Complex but logical: handles the actual complexity of the ecosystem"
+  ],
+
+  "gemini_overcomplicated": [
+    "Original: 'conditional_json_extract_nested_object' transformation",
+    "Unfudged: Check if sui_image_params exists, use it or don't",
+    "Original: 'direct_json_path_coalesce' for samplers",
+    "Unfudged: Try comfyuisampler first, fall back to autowebuisampler",
+    "Original: Complex transformation pipelines",
+    "Unfudged: Simple conditional extraction logic"
+  ],
+
+  "notes": [
+    "SwarmUI: When you want to use ALL the AI art tools",
+    "Conditional nesting: Organized but adds parsing complexity",
+    "Backend detection: Smart way to handle multi-platform support",
+    "Field naming: Slight variations from other platforms",
+    "Architecture: Actually pretty well thought out for the problem"
+  ]
+}

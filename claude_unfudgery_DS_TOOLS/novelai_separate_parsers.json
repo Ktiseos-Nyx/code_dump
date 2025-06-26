@@ -1,0 +1,356 @@
+{
+  "novelai_parser_system": {
+    "description": "NovelAI has TWO completely different metadata storage methods",
+    "approach": "Two separate parsers for two separate storage philosophies",
+    "legacy_format": "Standard PNG chunks - clean and readable",
+    "stealth_format": "LSB pixel steganography - hidden and sneaky"
+  },
+
+  "novelai_legacy_parser": {
+    "parser_name": "NovelAI Legacy PNG Chunks",
+    "priority": 128,
+    "description": "NovelAI's original clean metadata format using standard PNG chunks",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Clean detection - look for NovelAI signature and expected chunk structure",
+        "method": "detect_novelai_standard_chunks",
+        
+        "required_signatures": [
+          {
+            "field": "Software",
+            "value": "NovelAI",
+            "sources": ["exif_tag", "png_chunk"],
+            "confidence": "definitive",
+            "comment": "Clear NovelAI identification"
+          }
+        ],
+        
+        "required_structure": [
+          {
+            "chunk": "Description",
+            "contains": "prompt_text",
+            "required": true,
+            "comment": "Positive prompt stored here"
+          },
+          {
+            "chunk": "Comment", 
+            "format": "json",
+            "required": true,
+            "comment": "Generation parameters as JSON"
+          }
+        ],
+        
+        "detection_logic": "software_tag_plus_expected_chunks"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "NovelAI cleanly separates prompt and parameters",
+        "prompt_location": "Description PNG chunk (plain text)",
+        "parameters_location": "Comment PNG chunk (JSON)",
+        "additional_data": "Optional Source chunk for attribution"
+      },
+      
+      "extraction_method": "multi_chunk_png_parsing",
+      
+      "prompt_extraction": {
+        "positive_prompt": {
+          "source": "Description_chunk",
+          "method": "direct_text_content",
+          "type": "string",
+          "description": "Full positive prompt text"
+        },
+        
+        "negative_prompt": {
+          "source": "Comment_chunk_json",
+          "field": "uc",
+          "method": "json_field_extraction",
+          "type": "string", 
+          "fallback": "",
+          "description": "Negative prompt in 'uc' (undesired content) field"
+        }
+      },
+      
+      "parameter_extraction": {
+        "core_generation_params": [
+          {
+            "name": "seed",
+            "source": "Comment_chunk_json",
+            "field": "seed",
+            "type": "integer",
+            "required": true
+          },
+          {
+            "name": "steps",
+            "source": "Comment_chunk_json", 
+            "field": "steps",
+            "type": "integer",
+            "required": true
+          },
+          {
+            "name": "sampler_name",
+            "source": "Comment_chunk_json",
+            "field": "sampler",
+            "type": "string",
+            "optional": true,
+            "common_values": ["k_euler", "k_euler_ancestral", "k_dpmpp_2m"]
+          },
+          {
+            "name": "cfg_scale",
+            "source": "Comment_chunk_json",
+            "field": "scale", 
+            "type": "float",
+            "optional": true,
+            "description": "CFG scale parameter"
+          }
+        ],
+        
+        "dimension_params": [
+          {
+            "name": "width",
+            "source": "Comment_chunk_json",
+            "field": "width",
+            "type": "integer",
+            "optional": true
+          },
+          {
+            "name": "height", 
+            "source": "Comment_chunk_json",
+            "field": "height",
+            "type": "integer",
+            "optional": true
+          }
+        ],
+        
+        "novelai_specific_params": [
+          {
+            "name": "denoising_strength",
+            "source": "Comment_chunk_json",
+            "field": "strength",
+            "type": "float",
+            "optional": true,
+            "description": "Image-to-image denoising strength"
+          },
+          {
+            "name": "noise_offset",
+            "source": "Comment_chunk_json",
+            "field": "noise",
+            "type": "float",
+            "optional": true,
+            "description": "NovelAI's noise offset parameter"
+          },
+          {
+            "name": "smea",
+            "source": "Comment_chunk_json",
+            "field": "sm",
+            "type": "boolean",
+            "optional": true,
+            "description": "SMEA (NovelAI's sampling enhancement)"
+          },
+          {
+            "name": "smea_dyn",
+            "source": "Comment_chunk_json", 
+            "field": "sm_dyn",
+            "type": "boolean",
+            "optional": true,
+            "description": "Dynamic SMEA"
+          }
+        ],
+        
+        "attribution_data": [
+          {
+            "name": "source_attribution",
+            "source": "Source_chunk",
+            "method": "direct_text_content",
+            "type": "string",
+            "optional": true,
+            "description": "Source attribution if present"
+          }
+        ]
+      }
+    },
+    
+    "output_format": {
+      "tool": "NovelAI",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "novelai_legacy_png_chunks",
+      "storage_method": "standard_png_chunks",
+      
+      "prompt": "{positive_prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "seed": "{seed}",
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "sampler_name": "{sampler_name}",
+        "width": "{width}",
+        "height": "{height}",
+        "denoising_strength": "{denoising_strength}"
+      },
+      
+      "novelai_specific": {
+        "noise_offset": "{noise_offset}",
+        "smea_enabled": "{smea}",
+        "smea_dynamic": "{smea_dyn}",
+        "source_attribution": "{source_attribution}",
+        "format_type": "legacy_png_chunks"
+      },
+      
+      "raw_chunks": {
+        "description_text": "{description_chunk_content}",
+        "comment_json": "{comment_chunk_json}",
+        "source_text": "{source_chunk_content}"
+      }
+    }
+  },
+
+  "novelai_stealth_parser": {
+    "parser_name": "NovelAI Stealth LSB",
+    "priority": 129,
+    "description": "NovelAI's steganography format - metadata hidden in pixel LSBs",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG"],
+    
+    "detection_rules": [
+      {
+        "comment": "Stealth format detection requires LSB analysis",
+        "method": "detect_lsb_steganography_signature",
+        
+        "required_image_properties": [
+          {
+            "format": "PNG",
+            "color_mode": "RGBA",
+            "requirement": "needs_alpha_channel_for_lsb_hiding",
+            "comment": "LSB hiding requires alpha channel"
+          }
+        ],
+        
+        "steganography_detection": [
+          {
+            "method": "check_lsb_magic_bytes",
+            "signature": "stealth_pngcomp",
+            "location": "least_significant_bits_of_pixels",
+            "confidence": "definitive_if_found",
+            "comment": "NovelAI's LSB signature string"
+          }
+        ],
+        
+        "detection_logic": "rgba_png_with_lsb_magic_signature"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Data extraction requires LSB steganography decoding",
+        "method": "lsb_pixel_data_extraction",
+        "signature_check": "stealth_pngcomp",
+        "data_format": "json_after_signature"
+      },
+      
+      "extraction_requirements": {
+        "special_note": "This parser requires custom LSB extraction implementation",
+        "algorithm": "least_significant_bit_steganography",
+        "steps": [
+          "1. Verify RGBA PNG format",
+          "2. Check LSB sequence for 'stealth_pngcomp' signature",
+          "3. Extract remaining LSB data as JSON string",
+          "4. Parse JSON for generation parameters"
+        ]
+      },
+      
+      "expected_data_structure": {
+        "comment": "Once extracted, should contain similar data to legacy format",
+        "format": "json_object_with_novelai_parameters",
+        "fields": "similar_to_legacy_comment_chunk_but_hidden_in_pixels"
+      }
+    },
+    
+    "output_format": {
+      "tool": "NovelAI",
+      "parser_version": "unfudged_v1", 
+      "workflow_type": "novelai_stealth_lsb",
+      "storage_method": "lsb_steganography",
+      "extraction_method": "least_significant_bit_decoding",
+      
+      "stealth_info": {
+        "magic_signature": "stealth_pngcomp",
+        "hiding_method": "pixel_lsb_encoding",
+        "detection_difficulty": "high_steganography",
+        "plausible_deniability": true
+      },
+      
+      "implementation_note": "Requires LSB extraction engine in core parser system",
+      "data_format": "extracted_json_similar_to_legacy_format"
+    }
+  },
+
+  "novelai_platform_info": {
+    "description": "NovelAI is an anime-focused AI art platform with unique features",
+    
+    "format_evolution": {
+      "legacy_era": {
+        "period": "Early NovelAI releases",
+        "approach": "Standard PNG chunks for transparency",
+        "philosophy": "Clean, readable metadata storage",
+        "pros": ["Easy to parse", "Standard compliant", "Human readable"],
+        "cons": ["Metadata visible to anyone", "Easy to scrape"]
+      },
+      
+      "stealth_era": {
+        "period": "Later NovelAI releases", 
+        "approach": "LSB steganography for privacy",
+        "philosophy": "Hidden metadata for creator protection",
+        "pros": ["Privacy protection", "Plausible deniability", "Anti-scraping"],
+        "cons": ["Complex extraction", "Requires special tools", "Can be detected by analysis"]
+      }
+    },
+    
+    "unique_features": {
+      "smea_sampling": "NovelAI's custom sampling enhancement",
+      "noise_offset": "Advanced noise control parameter",
+      "anime_focus": "Specialized models and parameters for anime art",
+      "privacy_conscious": "Stealth format shows privacy awareness"
+    },
+    
+    "why_two_parsers_needed": [
+      "Completely different storage philosophies", 
+      "Legacy: Standard PNG chunks (transparent)",
+      "Stealth: LSB steganography (hidden)",
+      "Different detection methods required",
+      "Different extraction algorithms needed",
+      "Better to have focused parsers than one confused parser"
+    ]
+  },
+
+  "implementation_notes": {
+    "legacy_parser": [
+      "Straightforward PNG chunk reading",
+      "Standard JSON parsing for Comment chunk", 
+      "Direct text extraction from Description chunk",
+      "Can be implemented with any PNG library"
+    ],
+    
+    "stealth_parser": [
+      "Requires LSB steganography implementation",
+      "Need to check magic bytes in pixel LSBs",
+      "Extract hidden JSON from remaining LSB data",
+      "More complex but not impossible to implement"
+    ],
+    
+    "gemini_overcomplicated": [
+      "Original parsers tried to handle both formats in one parser",
+      "Created complex conditional logic for detection",
+      "Reality: Just need two focused parsers",
+      "Legacy is simple PNG chunks, Stealth is LSB extraction"
+    ]
+  }
+}

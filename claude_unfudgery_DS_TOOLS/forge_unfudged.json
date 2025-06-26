@@ -1,0 +1,377 @@
+{
+  "forge_parser": {
+    "parser_name": "Forge WebUI (Unfudged)",
+    "priority": 125,
+    "description": "Forge WebUI - Enhanced fork of Automatic1111 with advanced features",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["PNG", "JPEG", "WEBP"],
+    
+    "platform_info": {
+      "description": "Forge is a performance-optimized fork of Automatic1111 WebUI",
+      "relationship": "Enhanced fork of A1111 with additional features",
+      "focus": "Better performance, advanced features, improved VRAM efficiency",
+      "compatibility": "Mostly A1111-compatible with Forge-specific enhancements"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Forge uses A1111 format but with specific enhancement markers",
+        "method": "detect_forge_enhanced_a1111",
+        
+        "base_a1111_requirements": [
+          "Steps:", "Sampler:", "CFG scale:", "Seed:", "Size:"
+        ],
+        
+        "forge_specific_signatures": [
+          {
+            "signature": "Version: f[\\d\\.]",
+            "confidence": "definitive",
+            "description": "Forge version strings start with 'f'"
+          },
+          {
+            "signature": "Schedule type:",
+            "confidence": "high",
+            "description": "Advanced scheduler options"
+          },
+          {
+            "signature": "Hires Module \\d+:",
+            "confidence": "very_high",
+            "description": "Forge's modular upscaling system"
+          },
+          {
+            "signature": "Hires CFG Scale:",
+            "confidence": "high",
+            "description": "Separate CFG for upscaling passes"
+          }
+        ],
+        
+        "detection_logic": "a1111_base_format_plus_forge_enhancement_markers"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Standard A1111 text format with Forge-specific enhancements",
+        "base_format": "a1111_text_metadata",
+        "enhancements": "forge_specific_advanced_parameters",
+        "approach": "parse_as_a1111_plus_forge_extensions"
+      },
+      
+      "extraction_method": "enhanced_a1111_parsing",
+      
+      "standard_a1111_fields": [
+        {
+          "name": "prompt",
+          "method": "extract_before_negative_prompt",
+          "description": "Positive prompt (same as A1111)"
+        },
+        {
+          "name": "negative_prompt",
+          "method": "extract_after_negative_prompt",
+          "marker": "Negative prompt:",
+          "fallback": ""
+        },
+        {
+          "name": "steps",
+          "method": "find_key_value",
+          "key": "Steps",
+          "type": "integer"
+        },
+        {
+          "name": "sampler_name",
+          "method": "find_key_value",
+          "key": "Sampler",
+          "type": "string"
+        },
+        {
+          "name": "cfg_scale",
+          "method": "find_key_value",
+          "key": "CFG scale",
+          "type": "float"
+        },
+        {
+          "name": "seed",
+          "method": "find_key_value",
+          "key": "Seed",
+          "type": "integer"
+        },
+        {
+          "name": "size",
+          "method": "find_key_value",
+          "key": "Size",
+          "type": "dimensions",
+          "parser": "split_width_height"
+        },
+        {
+          "name": "model",
+          "method": "find_key_value",
+          "key": "Model",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "model_hash",
+          "method": "find_key_value",
+          "key": "Model hash",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      
+      "forge_enhanced_fields": [
+        {
+          "name": "scheduler",
+          "method": "find_key_value",
+          "key": "Schedule type",
+          "type": "string",
+          "optional": true,
+          "description": "Advanced scheduler options in Forge"
+        },
+        {
+          "name": "forge_version",
+          "method": "find_key_value",
+          "key": "Version",
+          "type": "string",
+          "pattern": "f[\\d\\.]+",
+          "optional": true,
+          "description": "Forge version (starts with 'f')"
+        }
+      ],
+      
+      "forge_upscaling_system": [
+        {
+          "name": "hires_upscale",
+          "method": "find_key_value",
+          "key": "Hires upscale",
+          "type": "float_or_string",
+          "optional": true
+        },
+        {
+          "name": "hires_steps",
+          "method": "find_key_value",
+          "key": "Hires steps",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "hires_upscaler",
+          "method": "find_key_value",
+          "key": "Hires upscaler",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "hires_cfg_scale",
+          "method": "find_key_value",
+          "key": "Hires CFG Scale",
+          "type": "float",
+          "optional": true,
+          "description": "Forge-specific: separate CFG for upscaling"
+        },
+        {
+          "name": "hires_module_1",
+          "method": "find_key_value",
+          "key": "Hires Module 1",
+          "type": "string",
+          "optional": true,
+          "description": "Forge's modular upscaling system"
+        }
+      ],
+      
+      "standard_advanced_fields": [
+        {
+          "name": "vae_model",
+          "method": "find_key_value",
+          "key": "VAE",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vae_hash",
+          "method": "find_key_value",
+          "key": "VAE hash",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "clip_skip",
+          "method": "find_key_value",
+          "key": "Clip skip",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "denoising_strength",
+          "method": "find_key_value",
+          "key": "Denoising strength",
+          "type": "float",
+          "optional": true
+        },
+        {
+          "name": "hashes_data",
+          "method": "find_and_parse_json_field",
+          "key": "Hashes",
+          "type": "json_object",
+          "optional": true,
+          "description": "Model hashes as JSON object"
+        }
+      ]
+    },
+    
+    "output_format": {
+      "tool": "Forge WebUI",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "forge_enhanced_a1111",
+      "base_platform": "automatic1111_fork",
+      
+      "prompt": "{prompt}",
+      "negative_prompt": "{negative_prompt}",
+      
+      "parameters": {
+        "steps": "{steps}",
+        "cfg_scale": "{cfg_scale}",
+        "seed": "{seed}",
+        "sampler_name": "{sampler_name}",
+        "scheduler": "{scheduler}",
+        "model": "{model}",
+        "model_hash": "{model_hash}",
+        "width": "{width}",
+        "height": "{height}",
+        "vae_model": "{vae_model}",
+        "vae_hash": "{vae_hash}",
+        "clip_skip": "{clip_skip}",
+        "denoising_strength": "{denoising_strength}"
+      },
+      
+      "forge_enhancements": {
+        "version": "{forge_version}",
+        "advanced_scheduler": "{scheduler}",
+        "hires_cfg_scale": "{hires_cfg_scale}",
+        "hires_module_system": "{hires_module_1}",
+        "enhanced_upscaling": {
+          "hires_upscale": "{hires_upscale}",
+          "hires_steps": "{hires_steps}",
+          "hires_upscaler": "{hires_upscaler}"
+        },
+        "model_hashes": "{hashes_data}"
+      },
+      
+      "raw_metadata": "{original_a1111_text}"
+    }
+  },
+
+  "forge_vs_a1111": {
+    "base_compatibility": [
+      "Uses same A1111 text metadata format",
+      "Same core parameters (steps, CFG, seed, etc.)",
+      "Compatible with A1111 models and workflows",
+      "Can load A1111 generated images"
+    ],
+    
+    "forge_enhancements": [
+      {
+        "feature": "Performance",
+        "improvement": "Better VRAM efficiency and speed optimizations"
+      },
+      {
+        "feature": "Version identifier",
+        "marker": "Version strings start with 'f' (f1.2.3)"
+      },
+      {
+        "feature": "Advanced schedulers",
+        "marker": "Schedule type field with more options"
+      },
+      {
+        "feature": "Modular upscaling",
+        "marker": "Hires Module system for better upscaling control"
+      },
+      {
+        "feature": "Enhanced CFG",
+        "marker": "Separate Hires CFG Scale for upscaling passes"
+      }
+    ]
+  },
+
+  "forge_ecosystem": {
+    "main_forge": {
+      "description": "Primary Forge WebUI - what this parser handles",
+      "focus": "Performance + stability + new features",
+      "version_pattern": "f1.x.x"
+    },
+    
+    "reforge_variant": {
+      "description": "Another fork with different focus",
+      "note": "May need separate parser if metadata differs significantly",
+      "status": "not_covered_by_this_parser"
+    },
+    
+    "other_forks": {
+      "note": "Forge ecosystem has multiple variants",
+      "approach": "Create separate parsers as needed",
+      "plugin_system": "Perfect for handling fork variations"
+    }
+  },
+
+  "detection_strategy": {
+    "priority_logic": [
+      "Higher priority than base A1111 (125 vs lower)",
+      "Forge-specific markers take precedence",
+      "Falls back to A1111 parser if no Forge signatures"
+    ],
+    
+    "signature_strength": [
+      "Version: f* → Definitive Forge",
+      "Hires Module → Very likely Forge",
+      "Schedule type → Possible Forge or advanced A1111",
+      "Hires CFG Scale → Likely Forge enhancement"
+    ]
+  },
+
+  "implementation_notes": {
+    "parsing_approach": [
+      "Extend A1111 parsing with Forge-specific fields",
+      "Same text format, just additional parameters",
+      "Forge version detection from version string",
+      "Graceful handling of missing Forge fields"
+    ],
+    
+    "field_extraction": [
+      "All standard A1111 fields work normally",
+      "Additional Forge fields are optional",
+      "Enhanced upscaling parameters",
+      "Advanced scheduler information"
+    ],
+    
+    "version_detection": [
+      "Version strings starting with 'f' indicate Forge",
+      "Can extract specific Forge version number",
+      "Helps distinguish from base A1111"
+    ]
+  },
+
+  "why_forge_needs_own_parser": [
+    "Additional parameters not in base A1111",
+    "Version identification important for troubleshooting",
+    "Enhanced upscaling system has specific fields",
+    "Better to have focused parser than complex A1111 conditionals"
+  ],
+
+  "gemini_overcomplicated": [
+    "Original: Complex regex transformations for size parsing",
+    "Unfudged: Split '512x768' on 'x'",
+    "Original: JSON variable parsing for hashes",
+    "Unfudged: Parse JSON field directly",
+    "Original: Multiple transformation steps",
+    "Unfudged: Direct field extraction with Forge awareness"
+  ],
+
+  "notes": [
+    "Forge: A1111 but faster and with more features",
+    "Enhanced upscaling: Modular system with separate CFG",
+    "Version detection: 'f' prefix distinguishes from base A1111",
+    "Compatibility: Mostly A1111-compatible with enhancements",
+    "Your plugin system: Perfect for handling platform forks"
+  ]
+}
