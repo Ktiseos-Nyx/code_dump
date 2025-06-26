@@ -1,0 +1,420 @@
+{
+  "lora_detection_system": {
+    "version": "1.0",
+    "description": "Detect LoRA types, compatibility, and categories from names and metadata",
+    "approach": "multi_layer_pattern_analysis",
+    
+    "architecture_compatibility": [
+      {
+        "architecture": "SDXL",
+        "priority": 1,
+        "patterns": [
+          "xl",
+          "sdxl", 
+          "pony",
+          "ponyxl",
+          "animagine.*xl",
+          "illustrious.*xl"
+        ],
+        "file_indicators": ["_xl_", ".xl.", "xl_v"],
+        "confidence_boost": ["xl in name", "pony reference"],
+        "compatibility": ["SDXL", "Pony Diffusion XL"]
+      },
+      
+      {
+        "architecture": "Pony Diffusion XL",
+        "priority": 2,
+        "patterns": [
+          "pony",
+          "ponyxl", 
+          "pdxl",
+          "pony.*diffusion",
+          "score_\\d+",
+          "source_\\w+"
+        ],
+        "tag_indicators": ["score_9", "source_anime", "rating_"],
+        "confidence_boost": ["pony tags", "score rating system"],
+        "compatibility": ["Pony Diffusion XL", "SDXL"]
+      },
+      
+      {
+        "architecture": "Flux",
+        "priority": 3,
+        "patterns": [
+          "flux",
+          "schnell",
+          "flux.*dev",
+          "bfl",
+          "black.*forest"
+        ],
+        "file_indicators": ["_flux_", ".flux.", "flux_v"],
+        "confidence_boost": ["flux in name", "recent creation"],
+        "compatibility": ["Flux.1 Dev", "Flux.1 Schnell"]
+      },
+      
+      {
+        "architecture": "SD 2.x",
+        "priority": 4,
+        "patterns": [
+          "v2[._-]",
+          "sd2[._-]",
+          "768.*model",
+          "openclip"
+        ],
+        "resolution_hint": 768,
+        "confidence_boost": ["v2 in name", "768p reference"],
+        "compatibility": ["SD 2.0", "SD 2.1"]
+      },
+      
+      {
+        "architecture": "SD 1.5",
+        "priority": 10,
+        "patterns": [
+          "v1[._-]5",
+          "sd1[._-]5",
+          "classic",
+          "standard"
+        ],
+        "resolution_hint": 512,
+        "confidence_boost": ["v1.5 in name", "512p reference"],
+        "compatibility": ["SD 1.5"],
+        "fallback": true
+      }
+    ],
+    
+    "lora_training_types": [
+      {
+        "type": "LyCORIS",
+        "patterns": [
+          "lycoris",
+          "lyco",
+          "locon",
+          "loha",
+          "lokr",
+          "dylora"
+        ],
+        "description": "Advanced LoRA variants with better performance",
+        "confidence": "definitive_if_pattern_match"
+      },
+      
+      {
+        "type": "DoRA", 
+        "patterns": [
+          "dora",
+          "direction.*attention",
+          "weight.*magnitude"
+        ],
+        "description": "Direction of Attention LoRAs",
+        "confidence": "high_if_pattern_match"
+      },
+      
+      {
+        "type": "Standard LoRA",
+        "patterns": [
+          "lora",
+          "standard",
+          "classic"
+        ],
+        "description": "Traditional LoRA training method",
+        "confidence": "medium",
+        "fallback": true
+      }
+    ],
+    
+    "content_categories": [
+      {
+        "category": "Character",
+        "patterns": [
+          "character",
+          "person",
+          "celebrity",
+          "actor",
+          "actress",
+          "girl",
+          "boy",
+          "woman",
+          "man",
+          "face"
+        ],
+        "name_patterns": [
+          "\\w+_character",
+          "\\w+_person",
+          "[A-Z][a-z]+_[A-Z][a-z]+",
+          "famous_\\w+"
+        ],
+        "confidence": "high_for_people_names"
+      },
+      
+      {
+        "category": "Style",
+        "patterns": [
+          "style",
+          "art.*style",
+          "aesthetic",
+          "artwork",
+          "painting",
+          "illustration",
+          "anime.*style",
+          "cartoon",
+          "photorealistic",
+          "oil.*painting",
+          "watercolor"
+        ],
+        "confidence": "high_for_art_terms"
+      },
+      
+      {
+        "category": "Clothing",
+        "patterns": [
+          "clothing",
+          "outfit",
+          "dress",
+          "shirt",
+          "pants",
+          "costume",
+          "uniform",
+          "fashion",
+          "wear",
+          "attire"
+        ],
+        "confidence": "high_for_clothing_terms"
+      },
+      
+      {
+        "category": "Pose/Position",
+        "patterns": [
+          "pose",
+          "position",
+          "sitting",
+          "standing",
+          "lying",
+          "action",
+          "gesture",
+          "hands",
+          "feet"
+        ],
+        "confidence": "medium_for_pose_terms"
+      },
+      
+      {
+        "category": "Concept",
+        "patterns": [
+          "concept",
+          "object",
+          "item",
+          "tool",
+          "vehicle",
+          "building",
+          "background",
+          "scene",
+          "environment"
+        ],
+        "confidence": "medium_for_concept_terms"
+      },
+      
+      {
+        "category": "NSFW",
+        "patterns": [
+          "nsfw",
+          "adult",
+          "nude",
+          "explicit",
+          "mature",
+          "18\\+"
+        ],
+        "confidence": "definitive_if_pattern_match",
+        "warning": true
+      }
+    ],
+    
+    "quality_indicators": [
+      {
+        "quality": "Professional",
+        "patterns": [
+          "professional",
+          "commercial",
+          "studio",
+          "high.*quality",
+          "premium",
+          "pro"
+        ],
+        "version_patterns": ["v\\d+\\.\\d+", "version.*\\d"],
+        "confidence": "medium_for_quality_terms"
+      },
+      
+      {
+        "quality": "Community",
+        "patterns": [
+          "community",
+          "fan.*made",
+          "amateur",
+          "test",
+          "experiment",
+          "wip",
+          "beta"
+        ],
+        "confidence": "medium_for_community_terms"
+      },
+      
+      {
+        "quality": "Experimental",
+        "patterns": [
+          "experimental",
+          "test",
+          "alpha",
+          "beta",
+          "prototype",
+          "research",
+          "draft"
+        ],
+        "confidence": "high_for_experimental_terms"
+      }
+    ]
+  },
+
+  "lora_analysis_examples": {
+    "example_1": {
+      "input": "<lora:anime_style_xl_v2:0.8>",
+      "analysis": {
+        "name": "anime_style_xl_v2",
+        "strength": 0.8,
+        "detected_architecture": "SDXL",
+        "architecture_confidence": "high",
+        "detected_category": "Style", 
+        "category_confidence": "high",
+        "training_type": "Standard LoRA",
+        "quality": "Professional"
+      }
+    },
+    
+    "example_2": {
+      "input": "<lora:pony_character_twilight_sparkle:1.0>",
+      "analysis": {
+        "name": "pony_character_twilight_sparkle",
+        "strength": 1.0,
+        "detected_architecture": "Pony Diffusion XL",
+        "architecture_confidence": "definitive",
+        "detected_category": "Character",
+        "category_confidence": "high", 
+        "training_type": "Standard LoRA",
+        "quality": "Community"
+      }
+    },
+    
+    "example_3": {
+      "input": "<lora:flux_photography_style:0.6>",
+      "analysis": {
+        "name": "flux_photography_style", 
+        "strength": 0.6,
+        "detected_architecture": "Flux",
+        "architecture_confidence": "high",
+        "detected_category": "Style",
+        "category_confidence": "high",
+        "training_type": "Standard LoRA",
+        "quality": "Professional"
+      }
+    }
+  },
+
+  "detection_algorithm": {
+    "step_1": "parse_lora_string_to_extract_names_and_strengths",
+    "step_2": "architecture_compatibility_analysis",
+    "step_3": "training_type_detection", 
+    "step_4": "content_category_classification",
+    "step_5": "quality_assessment",
+    "step_6": "confidence_scoring_and_output"
+  },
+
+  "enhanced_lora_output": {
+    "basic_format": {
+      "loras": [
+        {
+          "name": "anime_style_xl_v2",
+          "strength": 0.8,
+          "detected_info": {
+            "architecture": "SDXL",
+            "category": "Style",
+            "training_type": "Standard LoRA"
+          }
+        }
+      ]
+    },
+    
+    "detailed_format": {
+      "loras": [
+        {
+          "name": "anime_style_xl_v2",
+          "strength": 0.8,
+          "analysis": {
+            "architecture": {
+              "detected": "SDXL",
+              "confidence": "high",
+              "compatibility": ["SDXL", "Pony Diffusion XL"]
+            },
+            "category": {
+              "detected": "Style", 
+              "confidence": "high",
+              "subcategory": "anime_art_style"
+            },
+            "training": {
+              "type": "Standard LoRA",
+              "confidence": "medium"
+            },
+            "quality": {
+              "level": "Professional",
+              "confidence": "medium"
+            }
+          }
+        }
+      ]
+    }
+  },
+
+  "integration_with_metadata": {
+    "approach": "enhance_existing_lora_arrays",
+    "timing": "after_lora_string_parsing",
+    "input": "parsed_lora_array_from_existing_parsers",
+    "output": "enhanced_lora_array_with_detection_info",
+    
+    "example_enhancement": {
+      "before": {
+        "loras": [
+          {"name": "style_lora", "strength": 0.8},
+          {"name": "character_lora", "strength": 1.0}
+        ]
+      },
+      "after": {
+        "loras": [
+          {
+            "name": "style_lora", 
+            "strength": 0.8,
+            "type": "Style",
+            "architecture": "SD 1.5"
+          },
+          {
+            "name": "character_lora",
+            "strength": 1.0, 
+            "type": "Character",
+            "architecture": "SDXL"
+          }
+        ]
+      }
+    }
+  },
+
+  "user_benefits": [
+    "Compatibility warnings: 'This SDXL LoRA won't work with SD 1.5 models'",
+    "Category understanding: 'This is a character LoRA, use for people'",
+    "Quality expectations: 'Professional LoRA, expect high quality results'",
+    "Training type info: 'LyCORIS LoRA, may need different loading method'",
+    "Usage guidance: 'Style LoRA, typical strength 0.6-0.8'"
+  ],
+
+  "notes": [
+    "Pattern matching covers most common LoRA naming conventions",
+    "Architecture detection helps prevent compatibility issues", 
+    "Category classification aids in LoRA organization",
+    "Training type detection helps with technical usage",
+    "Can be enhanced with community database integration"
+  ]
+}
