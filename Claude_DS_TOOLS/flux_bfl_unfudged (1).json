@@ -1,0 +1,280 @@
+{
+  "flux_bfl_parser": {
+    "parser_name": "Flux (Black Forest Labs) Unfudged",
+    "priority": 120,
+    "description": "Flux models by Black Forest Labs - next-generation AI art with standard EXIF metadata",
+    "version": "1.0",
+    "maintainer": "unfudging_team",
+    
+    "target_file_types": ["JPEG", "TIFF", "PNG"],
+    
+    "platform_info": {
+      "company": "Black Forest Labs",
+      "founded_by": "Original Stable Diffusion team",
+      "models": ["Flux.1 Dev", "Flux.1 Schnell", "Flux Pro"],
+      "significance": "Next-generation diffusion models from SD creators",
+      "metadata_philosophy": "Standard photography metadata over custom formats"
+    },
+    
+    "detection_rules": [
+      {
+        "comment": "Flux uses standard EXIF tags with Black Forest Labs signature",
+        "method": "detect_flux_exif_signature",
+        
+        "required_exif_structure": [
+          {
+            "tag": "Software",
+            "contains": "flux",
+            "case_sensitive": false,
+            "confidence": "high",
+            "comment": "Software tag mentions Flux"
+          },
+          {
+            "tag": "Make",
+            "contains": "black forest labs",
+            "case_sensitive": false,
+            "confidence": "definitive",
+            "comment": "Manufacturer identification"
+          },
+          {
+            "tag": "ImageDescription",
+            "exists": true,
+            "required": true,
+            "comment": "Prompt stored in standard description field"
+          }
+        ],
+        
+        "detection_logic": "standard_exif_with_black_forest_labs_signature"
+      }
+    ],
+    
+    "parsing_instructions": {
+      "input_strategy": {
+        "comment": "Extract AI generation data from standard EXIF photography tags",
+        "approach": "photography_standard_compliance",
+        "philosophy": "Use existing standards instead of inventing new formats"
+      },
+      
+      "extraction_method": "standard_exif_tag_extraction",
+      
+      "photography_standard_fields": [
+        {
+          "name": "prompt",
+          "exif_tag": "ImageDescription",
+          "exif_ifd": "0th",
+          "type": "string",
+          "description": "Prompt stored in standard image description field",
+          "required": true
+        },
+        {
+          "name": "manufacturer",
+          "exif_tag": "Make",
+          "exif_ifd": "0th", 
+          "type": "string",
+          "expected_value": "Black Forest Labs",
+          "description": "Company identification"
+        },
+        {
+          "name": "model_variant",
+          "exif_tag": "Model",
+          "exif_ifd": "0th",
+          "type": "string",
+          "optional": true,
+          "description": "Flux model variant (Dev, Schnell, Pro)",
+          "common_values": ["flux-dev", "flux-schnell", "flux-pro"]
+        },
+        {
+          "name": "software_info",
+          "exif_tag": "Software",
+          "exif_ifd": "0th",
+          "type": "string",
+          "description": "Software/platform information including Flux"
+        }
+      ],
+      
+      "ai_generation_metadata": {
+        "prompt_handling": {
+          "source": "ImageDescription EXIF tag",
+          "format": "plain_text_prompt",
+          "comment": "Uses photography standard instead of custom fields"
+        },
+        
+        "negative_prompt": {
+          "availability": "not_stored",
+          "reason": "Flux models may not use negative prompts or store them differently",
+          "fallback": "null"
+        },
+        
+        "technical_parameters": {
+          "availability": "minimal_or_not_stored",
+          "reason": "Focus on art creation rather than technical details",
+          "stored_parameters": ["model_variant"],
+          "missing_parameters": ["seed", "steps", "cfg_scale", "sampler"],
+          "philosophy": "Simplicity over technical exposure"
+        }
+      }
+    },
+    
+    "output_format": {
+      "tool": "Flux (Black Forest Labs)",
+      "model_variant": "{model_from_exif}",
+      "full_tool_name": "Flux ({model_variant})" if model_variant else "Flux (Black Forest Labs)",
+      "parser_version": "unfudged_v1",
+      "workflow_type": "flux_exif_standard",
+      
+      "prompt": "{image_description}",
+      "negative_prompt": null,
+      
+      "parameters": {
+        "model": "{model_variant}",
+        "seed": null,
+        "steps": null,
+        "cfg_scale": null,
+        "sampler_name": null,
+        "scheduler": null,
+        "width": "{width_from_image}",
+        "height": "{height_from_image}"
+      },
+      
+      "flux_specific": {
+        "manufacturer": "Black Forest Labs",
+        "model_series": "Flux",
+        "model_variant": "{model_variant}",
+        "uses_standard_exif": true,
+        "technical_parameters_minimal": true,
+        "next_generation_diffusion": true
+      },
+      
+      "exif_metadata": {
+        "make": "{make_tag}",
+        "model": "{model_tag}",
+        "software": "{software_tag}",
+        "image_description": "{image_description_tag}"
+      }
+    }
+  },
+
+  "flux_significance": {
+    "black_forest_labs_story": [
+      "Founded by original Stable Diffusion creators",
+      "Left Stability AI to start independent company",
+      "Focus on next-generation diffusion models",
+      "Industry veterans with proven track record"
+    ],
+    
+    "flux_models": {
+      "flux_dev": {
+        "description": "Development/research model",
+        "target": "Researchers and developers",
+        "licensing": "Non-commercial research"
+      },
+      "flux_schnell": {
+        "description": "Fast generation model",
+        "target": "Quick generation use cases",
+        "licensing": "Apache 2.0 (open source)"
+      },
+      "flux_pro": {
+        "description": "Commercial quality model",
+        "target": "Professional applications",
+        "licensing": "Commercial"
+      }
+    },
+    
+    "industry_impact": [
+      "Competition to Stability AI and other diffusion model providers",
+      "Innovation in model architecture and training",
+      "Focus on quality and performance improvements",
+      "Alternative to existing model ecosystems"
+    ]
+  },
+
+  "metadata_philosophy_analysis": {
+    "flux_approach": {
+      "strategy": "Standard EXIF tags for core information",
+      "benefits": ["Photography tool compatibility", "Universal readability", "Clean simplicity"],
+      "limitations": ["Minimal technical parameter storage", "Less detailed generation info"]
+    },
+    
+    "vs_other_platforms": {
+      "most_platforms": "Custom JSON formats with extensive technical details",
+      "flux": "Standard EXIF tags with minimal but essential information",
+      "philosophy": "Art-focused vs technical-focused metadata"
+    },
+    
+    "target_audience_reflected": {
+      "flux_users": "Artists and creators who want results over technical control",
+      "power_users": "May prefer platforms with more detailed parameter control",
+      "photographers": "Appreciate standard metadata that integrates with photo workflows"
+    }
+  },
+
+  "standard_exif_advantages": {
+    "photography_tool_integration": [
+      "Lightroom can read ImageDescription as caption",
+      "Photo management software shows Make/Model correctly",
+      "EXIF viewers display standard metadata",
+      "No custom parsing needed for basic info"
+    ],
+    
+    "cross_platform_compatibility": [
+      "Any EXIF reader can extract prompt",
+      "Standard fields work across operating systems",
+      "Future-proof metadata approach",
+      "No dependency on custom parsing libraries"
+    ],
+    
+    "simplicity_benefits": [
+      "Less metadata complexity for users",
+      "Focus on the art rather than technical details",
+      "Easier to understand for non-technical users",
+      "Reduced metadata parsing overhead"
+    ]
+  },
+
+  "why_this_parser_matters": [
+    "Black Forest Labs is a major player in AI art",
+    "Flux models represent next-generation technology",
+    "Standard metadata approach is professionally smart",
+    "Supporting industry leaders shows parser system flexibility",
+    "Users need metadata extraction from cutting-edge platforms"
+  ],
+
+  "implementation_notes": {
+    "exif_extraction": [
+      "Read standard EXIF tags (Make, Model, ImageDescription, Software)",
+      "No complex JSON parsing required",
+      "Handle case-insensitive detection for 'flux' and 'black forest labs'",
+      "Extract model variant for tool identification"
+    ],
+    
+    "model_variant_handling": [
+      "Model tag may contain: 'flux-dev', 'flux-schnell', 'flux-pro'",
+      "Use for specific tool identification",
+      "Display as 'Flux (Dev)' or 'Flux (Schnell)' etc.",
+      "Fallback to 'Flux (Black Forest Labs)' if no variant"
+    ],
+    
+    "missing_parameters": [
+      "Flux images may not contain technical generation parameters",
+      "Set null values for seed, steps, CFG, sampler",
+      "Focus on what's available: prompt, model, dimensions"
+    ]
+  },
+
+  "gemini_overcomplicated": [
+    "Original: 'string_concatenate_conditional' for tool naming",
+    "Unfudged: Simple conditional string formatting",
+    "Original: Complex context value extraction methods",
+    "Unfudged: Direct EXIF tag reading",
+    "Original: Multiple transformation steps",
+    "Unfudged: Standard EXIF extraction pipeline"
+  ],
+
+  "notes": [
+    "Flux: Next-generation diffusion models from SD creators",
+    "Black Forest Labs: Industry veterans with new company",
+    "EXIF approach: Smart use of photography standards",
+    "Minimal metadata: Focus on art over technical details",
+    "Industry significance: Major player in AI art evolution"
+  ]
+}
